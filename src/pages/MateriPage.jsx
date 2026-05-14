@@ -35,8 +35,8 @@ export function MateriPage({ materiItems, onOpenMateri }) {
             key={item.title}
             type="button"
             onClick={() => { playClick(); onOpenMateri(item); }}
-            className="group relative flex flex-col gap-3 overflow-hidden rounded-2xl border-4 border-white/90 bg-white/90 p-5 text-left shadow-[0_6px_0_rgba(95,60,31,0.15),0_12px_24px_rgba(78,45,21,0.12)] backdrop-blur-sm transition-all duration-200 hover:-translate-y-1.5 hover:border-orange-300 hover:shadow-[0_10px_0_rgba(95,60,31,0.12),0_18px_30px_rgba(78,45,21,0.18)] focus-visible:outline-none focus-visible:ring-4 focus-visible:ring-orange-300 active:translate-y-0 animate-[fadeInUp_0.5s_ease-out]"
-            style={{ animationDelay: `${index * 0.06}s`, animationFillMode: 'both' }}
+            className="group relative flex flex-col gap-3 overflow-hidden rounded-2xl border-4 border-white/90 bg-white/90 p-5 text-left shadow-[0_6px_0_rgba(95,60,31,0.15),0_12px_24px_rgba(78,45,21,0.12)] backdrop-blur-sm transition-all duration-200 hover:-translate-y-1.5 hover:border-orange-300 hover:shadow-[0_10px_0_rgba(95,60,31,0.12),0_18px_30px_rgba(78,45,21,0.18)] focus-visible:outline-none focus-visible:ring-4 focus-visible:ring-orange-300 active:translate-y-0 animate-[fadeInUp_0.55s_ease-out]"
+            style={{ '--stagger-delay': `${index * 80}ms`, animationDelay: `${index * 0.08}s`, animationFillMode: 'both' }}
             aria-label={`Buka materi: ${item.title}`}
           >
             {/* Shine overlay */}

@@ -71,7 +71,7 @@ export function MateriDetailPage({ item, index, total, onNext, onPrev, hasNext, 
 
   return (
     <div
-      className="mx-auto flex w-full max-w-[780px] flex-col gap-6 px-4 py-2 animate-[fadeInUp_0.35s_ease-out] sm:px-6"
+      className="mx-auto flex w-full max-w-[780px] flex-col gap-6 px-4 py-2 sm:px-6"
       onTouchStart={handleTouchStart}
       onTouchMove={handleTouchMove}
       onTouchEnd={handleTouchEnd}

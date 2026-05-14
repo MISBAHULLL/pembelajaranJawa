@@ -59,14 +59,14 @@ export default function App() {
 
   // ── Breadcrumb config per page ──────────────────────────────────────────────
   const pageCrumbs = {
-    learning:       [{ label: selectedLearning.title }],
-    materi:         [{ label: 'Materi Parikan' }],
+    learning:        [{ label: selectedLearning.title }],
+    materi:          [{ label: 'Materi Parikan' }],
     'materi-detail': [
       { label: 'Materi Parikan', onClick: () => { setPage('materi'); window.scrollTo({ top: 0, behavior: 'smooth' }); } },
       { label: activeMateri?.title ?? '' },
     ],
-    video:          [{ label: 'Video Pembelajaran' }],
-    game:           [{ label: 'Game Parikan' }],
+    video:           [{ label: 'Video Pembelajaran' }],
+    game:            [{ label: 'Game Parikan' }],
   };
   const crumbs = pageCrumbs[page] ?? [];
 
@@ -85,35 +85,42 @@ export default function App() {
         <NavBar crumbs={crumbs} onHome={goHome} />
       )}
 
-      <SceneLayout variant={page === 'materi-detail' ? 'materi' : page} isHome={page === 'home'} label={sceneLabel}>
-        {page === 'home' && (
-          <HomePage menuItems={mainMenu} onChooseMenu={openMenu} />
-        )}
+      <SceneLayout
+        variant={page === 'materi-detail' ? 'materi' : page}
+        isHome={page === 'home'}
+        label={sceneLabel}
+      >
+        {/* key=page → React remount saat halaman ganti, CSS animation langsung jalan */}
+        <div key={page} className="page-enter">
+          {page === 'home' && (
+            <HomePage menuItems={mainMenu} onChooseMenu={openMenu} />
+          )}
 
-        {page === 'learning' && (
-          <LearningPage item={selectedLearning} />
-        )}
+          {page === 'learning' && (
+            <LearningPage item={selectedLearning} />
+          )}
 
-        {page === 'materi' && (
-          <MateriPage materiItems={materiList} onOpenMateri={openMateri} />
-        )}
+          {page === 'materi' && (
+            <MateriPage materiItems={materiList} onOpenMateri={openMateri} />
+          )}
 
-        {page === 'materi-detail' && (
-          <MateriDetailPage
-            item={activeMateri}
-            index={activeMateriIndex}
-            total={materiList.length}
-            hasNext={activeMateriIndex < materiList.length - 1}
-            hasPrev={activeMateriIndex > 0}
-            onNext={handleNextMateri}
-            onPrev={handlePrevMateri}
-            onBackToList={() => { setPage('materi'); window.scrollTo({ top: 0, behavior: 'smooth' }); }}
-          />
-        )}
+          {page === 'materi-detail' && (
+            <MateriDetailPage
+              item={activeMateri}
+              index={activeMateriIndex}
+              total={materiList.length}
+              hasNext={activeMateriIndex < materiList.length - 1}
+              hasPrev={activeMateriIndex > 0}
+              onNext={handleNextMateri}
+              onPrev={handlePrevMateri}
+              onBackToList={() => { setPage('materi'); window.scrollTo({ top: 0, behavior: 'smooth' }); }}
+            />
+          )}
 
-        {page === 'video' && <VideoPage videos={videoList} />}
+          {page === 'video' && <VideoPage videos={videoList} />}
 
-        {page === 'game' && <GamePage />}
+          {page === 'game' && <GamePage />}
+        </div>
       </SceneLayout>
 
       {page !== 'home' && <HomeBar onHome={goHome} />}

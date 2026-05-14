@@ -2,6 +2,7 @@ import React, { useState, useRef } from 'react';
 import { Star, Trophy, RotateCcw, ChevronRight, CheckCircle2, XCircle, Sparkles, Zap, Target } from 'lucide-react';
 import { gameLevels } from '../data/gameParikan.js';
 import { useClickSound } from '../hooks/useClickSound.js';
+import { useLocalStorage } from '../hooks/useLocalStorage.js';
 
 // ── Star rating display ──────────────────────────────────────────────────────
 function StarRating({ count, filled = 0, size = 20 }) {
@@ -34,10 +35,11 @@ function ProgressBar({ current, total, color }) {
 }
 
 // ── Level selection screen ───────────────────────────────────────────────────
-function LevelSelect({ scores, onSelect }) {
+function LevelSelect({ scores, onSelect, onReset }) {
   const playClick = useClickSound();
   const totalScore = Object.values(scores).reduce((a, b) => a + b, 0);
   const maxScore = gameLevels.reduce((a, l) => a + l.questions.length, 0);
+  const hasAnyScore = totalScore > 0;
 
   return (
     <div className="mx-auto flex w-full max-w-[900px] flex-col items-center gap-8 px-4 py-2">
@@ -56,11 +58,22 @@ function LevelSelect({ scores, onSelect }) {
           Uji kemampuanmu ngerti lan ngrakit parikan!
         </p>
 
-        {/* Total score badge */}
-        {totalScore > 0 && (
-          <div className="mt-4 inline-flex items-center gap-2 rounded-full bg-yellow-400 px-5 py-2 text-sm font-black text-yellow-900 shadow-lg">
-            <Trophy size={16} aria-hidden="true" />
-            Skor Total: {totalScore} / {maxScore}
+        {/* Total score badge + reset */}
+        {hasAnyScore && (
+          <div className="mt-4 flex flex-wrap items-center justify-center gap-3">
+            <div className="inline-flex items-center gap-2 rounded-full bg-yellow-400 px-5 py-2 text-sm font-black text-yellow-900 shadow-lg">
+              <Trophy size={16} aria-hidden="true" />
+              Skor Total: {totalScore} / {maxScore}
+            </div>
+            <button
+              type="button"
+              onClick={() => { playClick(); onReset(); }}
+              className="inline-flex items-center gap-1.5 rounded-full border-2 border-white/80 bg-white/80 px-4 py-2 text-xs font-black uppercase tracking-wide text-gray-500 shadow-md backdrop-blur-sm transition hover:bg-red-50 hover:text-red-500 hover:border-red-200"
+              title="Reset semua skor"
+            >
+              <RotateCcw size={12} aria-hidden="true" />
+              Reset Skor
+            </button>
           </div>
         )}
       </header>
@@ -401,7 +414,8 @@ export function GamePage() {
   const [screen, setScreen] = useState('select'); // 'select' | 'quiz' | 'result'
   const [activeLevel, setActiveLevel] = useState(null);
   const [lastScore, setLastScore] = useState(0);
-  const [scores, setScores] = useState({}); // { levelId: bestScore }
+  // Skor tersimpan di localStorage — tetap ada setelah refresh
+  const [scores, setScores] = useLocalStorage('javanesia-game-scores', {});
 
   const handleSelectLevel = (level) => {
     setActiveLevel(level);
@@ -430,10 +444,16 @@ export function GamePage() {
     window.scrollTo({ top: 0, behavior: 'smooth' });
   };
 
+  const handleReset = () => {
+    setScores({});
+    setScreen('select');
+    setActiveLevel(null);
+  };
+
   return (
     <div className="mx-auto w-full max-w-[1100px]">
       {screen === 'select' && (
-        <LevelSelect scores={scores} onSelect={handleSelectLevel} />
+        <LevelSelect scores={scores} onSelect={handleSelectLevel} onReset={handleReset} />
       )}
       {screen === 'quiz' && activeLevel && (
         <QuizScreen level={activeLevel} onFinish={handleFinish} onBack={handleBack} />

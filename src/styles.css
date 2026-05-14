@@ -121,15 +121,48 @@ button {
   overflow-wrap: anywhere;
 }
 
-@keyframes fadeInUp {
+/* ── Page transition ──────────────────────────────────────────────────────── */
+
+/*
+ * Wrapper pakai flex agar browser bisa animate opacity + transform.
+ * key={page} di React memaksa remount → animasi selalu jalan dari awal.
+ */
+.page-enter {
+  display: flex;
+  flex-direction: column;
+  flex: 1;
+  animation: pageEnter 500ms cubic-bezier(0.16, 1, 0.3, 1) both;
+}
+
+@keyframes pageEnter {
   from {
     opacity: 0;
-    transform: translateY(20px);
+    transform: translateY(16px);
   }
   to {
     opacity: 1;
     transform: translateY(0);
   }
+}
+
+/* fadeInUp untuk elemen individual di dalam halaman */
+@keyframes fadeInUp {
+  from {
+    opacity: 0;
+    transform: translateY(18px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+/*
+ * Elemen dengan stagger — delay dimulai setelah halaman cukup terlihat (200ms).
+ * Set --stagger-delay di style inline per elemen.
+ */
+.page-enter [style*="animationDelay"] {
+  animation-delay: calc(var(--stagger-delay, 0ms) + 200ms) !important;
 }
 
 @keyframes slideRight {
