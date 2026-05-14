@@ -9,28 +9,25 @@ import { SceneLayout } from './components/SceneLayout.jsx';
 import { HomePage } from './pages/HomePage.jsx';
 import { LearningPage } from './pages/LearningPage.jsx';
 import { MateriPage } from './pages/MateriPage.jsx';
+import { MateriDetailPage } from './pages/MateriDetailPage.jsx';
 import { VideoPage } from './pages/VideoPage.jsx';
 import { GamePage } from './pages/GamePage.jsx';
 
 export default function App() {
   const [page, setPage] = useState('home');
-  const [selectedMateri, setSelectedMateri] = useState(materiList[0]);
   const [selectedLearning, setSelectedLearning] = useState(mainMenu[0]);
-  const [activeMateri, setActiveMateri] = useState(null);
   const [activeMenu, setActiveMenu] = useState(null);
+  const [activeMateriIndex, setActiveMateriIndex] = useState(0);
 
   const goHome = () => {
     setActiveMenu(null);
-    setActiveMateri(null);
     setPage('home');
     window.scrollTo({ top: 0, behavior: 'smooth' });
   };
 
   const openMenu = (item) => {
     if (item.page) {
-      if (item.page === 'learning') {
-        setSelectedLearning(item);
-      }
+      if (item.page === 'learning') setSelectedLearning(item);
       setPage(item.page);
       window.scrollTo({ top: 0, behavior: 'smooth' });
       return;
@@ -38,53 +35,57 @@ export default function App() {
     setActiveMenu(item);
   };
 
+  // Open materi detail by index
   const openMateri = (item) => {
-    setSelectedMateri(item);
-    setActiveMateri(item);
+    const idx = materiList.findIndex(m => m.title === item.title);
+    setActiveMateriIndex(idx >= 0 ? idx : 0);
+    setPage('materi-detail');
+    window.scrollTo({ top: 0, behavior: 'smooth' });
   };
 
   const handleNextMateri = () => {
-    const currentIndex = materiList.findIndex(m => m.title === activeMateri.title);
-    if (currentIndex >= 0 && currentIndex < materiList.length - 1) {
-      setActiveMateri(materiList[currentIndex + 1]);
+    if (activeMateriIndex < materiList.length - 1) {
+      setActiveMateriIndex(i => i + 1);
     }
   };
 
   const handlePrevMateri = () => {
-    const currentIndex = materiList.findIndex(m => m.title === activeMateri.title);
-    if (currentIndex > 0) {
-      setActiveMateri(materiList[currentIndex - 1]);
+    if (activeMateriIndex > 0) {
+      setActiveMateriIndex(i => i - 1);
     }
   };
 
-  const hasNextMateri = activeMateri && materiList.findIndex(m => m.title === activeMateri.title) < materiList.length - 1;
-  const hasPrevMateri = activeMateri && materiList.findIndex(m => m.title === activeMateri.title) > 0;
+  const activeMateri = materiList[activeMateriIndex];
 
   // ── Breadcrumb config per page ──────────────────────────────────────────────
   const pageCrumbs = {
-    learning: [{ label: selectedLearning.title }],
-    materi:   [{ label: 'Materi Parikan' }],
-    video:    [{ label: 'Video Pembelajaran' }],
-    game:     [{ label: 'Game Parikan' }],
+    learning:       [{ label: selectedLearning.title }],
+    materi:         [{ label: 'Materi Parikan' }],
+    'materi-detail': [
+      { label: 'Materi Parikan', onClick: () => { setPage('materi'); window.scrollTo({ top: 0, behavior: 'smooth' }); } },
+      { label: activeMateri?.title ?? '' },
+    ],
+    video:          [{ label: 'Video Pembelajaran' }],
+    game:           [{ label: 'Game Parikan' }],
   };
   const crumbs = pageCrumbs[page] ?? [];
 
   // ── Scene label ─────────────────────────────────────────────────────────────
   const sceneLabel =
-    page === 'home'     ? 'Javanesia' :
-    page === 'video'    ? 'Video Pembelajaran' :
-    page === 'game'     ? 'Game Parikan' :
-    page === 'learning' ? selectedLearning.title :
-                          'Materi Parikan Jawa';
+    page === 'home'          ? 'Javanesia' :
+    page === 'video'         ? 'Video Pembelajaran' :
+    page === 'game'          ? 'Game Parikan' :
+    page === 'learning'      ? selectedLearning.title :
+    page === 'materi-detail' ? activeMateri?.title ?? 'Materi' :
+                               'Materi Parikan Jawa';
 
   return (
     <main className="flex min-h-screen flex-col overflow-x-hidden bg-[#f7ead7] text-[#2e1d10]">
-      {/* Navbar — hidden on home, shown on all inner pages */}
       {page !== 'home' && (
         <NavBar crumbs={crumbs} onHome={goHome} />
       )}
 
-      <SceneLayout variant={page} isHome={page === 'home'} label={sceneLabel}>
+      <SceneLayout variant={page === 'materi-detail' ? 'materi' : page} isHome={page === 'home'} label={sceneLabel}>
         {page === 'home' && (
           <HomePage menuItems={mainMenu} onChooseMenu={openMenu} />
         )}
@@ -94,9 +95,19 @@ export default function App() {
         )}
 
         {page === 'materi' && (
-          <MateriPage
-            materiItems={materiList}
-            onOpenMateri={openMateri}
+          <MateriPage materiItems={materiList} onOpenMateri={openMateri} />
+        )}
+
+        {page === 'materi-detail' && (
+          <MateriDetailPage
+            item={activeMateri}
+            index={activeMateriIndex}
+            total={materiList.length}
+            hasNext={activeMateriIndex < materiList.length - 1}
+            hasPrev={activeMateriIndex > 0}
+            onNext={handleNextMateri}
+            onPrev={handlePrevMateri}
+            onBackToList={() => { setPage('materi'); window.scrollTo({ top: 0, behavior: 'smooth' }); }}
           />
         )}
 
@@ -105,21 +116,10 @@ export default function App() {
         {page === 'game' && <GamePage />}
       </SceneLayout>
 
-      {/* Bottom home bar — tetap ada seperti sebelumnya */}
       {page !== 'home' && <HomeBar onHome={goHome} />}
 
-      {activeMenu && <InfoModal label="Javanesia" item={activeMenu} onClose={() => setActiveMenu(null)} />}
-      {activeMateri && (
-        <InfoModal
-          label="Materi Parikan"
-          item={activeMateri}
-          example={activeMateri.example}
-          onClose={() => setActiveMateri(null)}
-          onNext={handleNextMateri}
-          onPrev={handlePrevMateri}
-          hasNext={hasNextMateri}
-          hasPrev={hasPrevMateri}
-        />
+      {activeMenu && (
+        <InfoModal label="Javanesia" item={activeMenu} onClose={() => setActiveMenu(null)} />
       )}
     </main>
   );
