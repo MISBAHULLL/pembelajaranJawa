@@ -1,0 +1,169 @@
+@import "tailwindcss";
+@source "./**/*.{js,jsx}";
+@source "../index.html";
+
+:root {
+  color: #2e1d10;
+  font-family: Inter, "Segoe UI", Arial, sans-serif;
+  font-synthesis: none;
+  text-rendering: optimizeLegibility;
+  -webkit-font-smoothing: antialiased;
+}
+
+* {
+  box-sizing: border-box;
+}
+
+html {
+  scroll-behavior: smooth;
+}
+
+body {
+  margin: 0;
+  min-width: 320px;
+  min-height: 100vh;
+}
+
+button {
+  font: inherit;
+}
+
+.sky-scene {
+  background:
+    radial-gradient(circle at 50% -5%, rgba(255, 255, 255, 0.95) 0 7%, transparent 16%),
+    linear-gradient(180deg, #9bd2ef 0%, #d7f2ff 40%, #fff5df 100%);
+}
+
+.home-scene {
+  background-image: url("/assets/javanesia-home-bg.svg");
+  background-position: center top;
+  background-repeat: no-repeat;
+  background-size: cover;
+}
+
+.video-scene {
+  background-image: url("/assets/video-page-bg.svg");
+  background-position: center top;
+  background-repeat: no-repeat;
+  background-size: cover;
+}
+
+.home-scene::before,
+.home-scene::after,
+.video-scene::before,
+.video-scene::after {
+  display: none;
+}
+
+.sky-scene::before,
+.sky-scene::after {
+  position: absolute;
+  inset: 0;
+  z-index: -4;
+  content: "";
+  background-image: url("/assets/batik-cloud.svg");
+  background-size: 480px auto;
+  background-repeat: repeat-x;
+  opacity: 0.56;
+  pointer-events: none;
+}
+
+.sky-scene::before {
+  background-position: top left;
+}
+
+.sky-scene::after {
+  transform: scaleX(-1);
+  background-position: top right;
+  opacity: 0.32;
+}
+
+.mist {
+  border-radius: 999px;
+  background:
+    radial-gradient(circle at 22% 54%, rgba(255, 255, 255, 0.88) 0 18%, transparent 28%),
+    radial-gradient(circle at 48% 50%, rgba(255, 255, 255, 0.86) 0 20%, transparent 30%),
+    radial-gradient(circle at 72% 60%, rgba(255, 255, 255, 0.9) 0 22%, transparent 32%);
+}
+
+.title-shadow-orange {
+  text-shadow:
+    0 6px 0 #ff9632,
+    0 0 0.08em #ff9632,
+    0 14px 26px rgba(79, 45, 23, 0.2);
+}
+
+.home-title {
+  -webkit-text-stroke: 7px #ff9632;
+  paint-order: stroke fill;
+  filter: drop-shadow(0 8px 0 rgba(255, 150, 50, 0.24));
+}
+
+.home-menu-text {
+  -webkit-text-stroke: 5px #f08a12;
+  paint-order: stroke fill;
+  filter: drop-shadow(0 2px 0 rgba(226, 119, 5, 0.8));
+}
+
+.video-tab-text {
+  -webkit-text-stroke: 5px #f59a00;
+  paint-order: stroke fill;
+  filter: drop-shadow(0 2px 0 rgba(245, 154, 0, 0.75));
+}
+
+.text-shadow-orange {
+  text-shadow:
+    0 2px 0 #e27705,
+    0 0 1px #e27705;
+}
+
+.overflow-wrap-anywhere {
+  overflow-wrap: anywhere;
+}
+
+@keyframes fadeInUp {
+  from {
+    opacity: 0;
+    transform: translateY(20px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+@keyframes slideRight {
+  from {
+    background-position: 0 0;
+  }
+  to {
+    background-position: 260px 0;
+  }
+}
+
+@keyframes shake {
+  0%, 100% { transform: translateX(0); }
+  15%       { transform: translateX(-8px); }
+  30%       { transform: translateX(8px); }
+  45%       { transform: translateX(-6px); }
+  60%       { transform: translateX(6px); }
+  75%       { transform: translateX(-3px); }
+  90%       { transform: translateX(3px); }
+}
+
+@keyframes bounceIn {
+  0%   { transform: scale(0.3); opacity: 0; }
+  50%  { transform: scale(1.15); opacity: 1; }
+  70%  { transform: scale(0.9); }
+  100% { transform: scale(1); }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  *,
+  *::before,
+  *::after {
+    scroll-behavior: auto !important;
+    transition: none !important;
+    animation: none !important;
+  }
+}
