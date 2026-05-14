@@ -1,8 +1,33 @@
-import React, { useState, useRef } from 'react';
-import { Star, Trophy, RotateCcw, ChevronRight, CheckCircle2, XCircle, Sparkles, Zap, Target } from 'lucide-react';
+import React, { useState, useRef, useEffect } from 'react';
+import { Star, Trophy, RotateCcw, ChevronRight, CheckCircle2, XCircle, Sparkles, Zap, Target, PenLine, AlertCircle } from 'lucide-react';
 import { gameLevels } from '../data/gameParikan.js';
 import { useClickSound } from '../hooks/useClickSound.js';
 import { useLocalStorage } from '../hooks/useLocalStorage.js';
+
+// ── Fuzzy validation helper ──────────────────────────────────────────────────
+// Normalisasi: lowercase, trim, hapus tanda baca di awal/akhir, spasi ganda
+function normalize(str) {
+  return str
+    .toLowerCase()
+    .trim()
+    .replace(/[.,!?;:'"]/g, '')   // hapus tanda baca
+    .replace(/\s+/g, ' ');        // spasi ganda → satu
+}
+
+// Cek apakah jawaban user cocok dengan jawaban yang benar
+function checkAnswer(userInput, correctAnswer, altAnswers = []) {
+  const userNorm = normalize(userInput);
+  const allAnswers = [correctAnswer, ...(altAnswers || [])].map(normalize);
+  return allAnswers.includes(userNorm);
+}
+
+// Deteksi masalah spesifik untuk feedback
+function detectIssue(userInput) {
+  if (!userInput.trim()) return null;
+  if (/\s{2,}/.test(userInput)) return 'Perhatikan: ada spasi ganda dalam jawabanmu.';
+  if (/^[.,!?;:]/.test(userInput.trim())) return 'Perhatikan: jangan mulai jawaban dengan tanda baca.';
+  return null;
+}
 
 // ── Star rating display ──────────────────────────────────────────────────────
 function StarRating({ count, filled = 0, size = 20 }) {
@@ -43,22 +68,22 @@ function LevelSelect({ scores, onSelect, onReset }) {
 
   return (
     <div className="mx-auto flex w-full max-w-[900px] flex-col items-center gap-8 px-4 py-2">
-      {/* Header */}
       <header className="w-full text-center">
         <div className="inline-flex items-center gap-2 rounded-full border-2 border-orange-400 bg-white px-5 py-2 text-sm font-black uppercase tracking-widest text-orange-600 shadow-md">
           <Zap size={14} className="text-orange-500" aria-hidden="true" />
           Game Parikan
           <Zap size={14} className="text-orange-500" aria-hidden="true" />
         </div>
-        <h1 className="mt-4 text-[clamp(2.8rem,6vw,4.5rem)] font-black uppercase leading-none text-white drop-shadow-2xl"
-          style={{ WebkitTextStroke: '6px #ff9632', paintOrder: 'stroke fill' }}>
+        <h1
+          className="mt-4 text-[clamp(2.8rem,6vw,4.5rem)] font-black uppercase leading-none text-white drop-shadow-2xl"
+          style={{ WebkitTextStroke: '6px #ff9632', paintOrder: 'stroke fill' }}
+        >
           Pilih Tingkat
         </h1>
         <p className="mt-2 text-base font-bold text-[#2e1d10] drop-shadow-sm">
           Uji kemampuanmu ngerti lan ngrakit parikan!
         </p>
 
-        {/* Total score badge + reset */}
         {hasAnyScore && (
           <div className="mt-4 flex flex-wrap items-center justify-center gap-3">
             <div className="inline-flex items-center gap-2 rounded-full bg-yellow-400 px-5 py-2 text-sm font-black text-yellow-900 shadow-lg">
@@ -69,7 +94,6 @@ function LevelSelect({ scores, onSelect, onReset }) {
               type="button"
               onClick={() => { playClick(); onReset(); }}
               className="inline-flex items-center gap-1.5 rounded-full border-2 border-white/80 bg-white/80 px-4 py-2 text-xs font-black uppercase tracking-wide text-gray-500 shadow-md backdrop-blur-sm transition hover:bg-red-50 hover:text-red-500 hover:border-red-200"
-              title="Reset semua skor"
             >
               <RotateCcw size={12} aria-hidden="true" />
               Reset Skor
@@ -78,78 +102,77 @@ function LevelSelect({ scores, onSelect, onReset }) {
         )}
       </header>
 
-      {/* Level cards */}
       <div className="grid w-full grid-cols-1 gap-5 sm:grid-cols-3">
         {gameLevels.map((level, idx) => {
           const best = scores[level.id] ?? 0;
           const total = level.questions.length;
-          const pct = Math.round((best / total) * 100);
+          const pct = total > 0 ? Math.round((best / total) * 100) : 0;
           const starsEarned = pct >= 80 ? 3 : pct >= 50 ? 2 : pct > 0 ? 1 : 0;
-          const unlocked = idx === 0 || (scores[gameLevels[idx - 1].id] ?? 0) >= Math.ceil(gameLevels[idx - 1].questions.length * 0.5);
+          const hasQuestions = total > 0;
+          const unlocked = idx === 0 || (scores[gameLevels[idx - 1].id] ?? 0) >= Math.ceil(gameLevels[idx - 1].questions.length * 0.7);
+          const isAvailable = hasQuestions && unlocked;
 
           return (
             <button
               key={level.id}
               type="button"
-              disabled={!unlocked}
+              disabled={!isAvailable}
               onClick={() => { playClick(); onSelect(level); }}
               className={`group relative flex flex-col items-center gap-4 overflow-hidden rounded-3xl border-4 p-6 text-center font-black text-white shadow-2xl transition-all duration-300
-                ${unlocked
+                ${isAvailable
                   ? 'cursor-pointer hover:-translate-y-2 hover:scale-[1.03] active:translate-y-0 active:scale-100'
                   : 'cursor-not-allowed opacity-50 grayscale'
                 }`}
               style={{
                 borderColor: `${level.color}cc`,
                 background: `linear-gradient(145deg, ${level.color}dd, ${level.color}88)`,
-                boxShadow: unlocked ? `0 12px 40px ${level.shadow}, 0 4px 0 ${level.color}66` : undefined,
+                boxShadow: isAvailable ? `0 12px 40px ${level.shadow}, 0 4px 0 ${level.color}66` : undefined,
               }}
-              aria-label={`${level.label} — ${level.subtitle}${!unlocked ? ' (terkunci)' : ''}`}
+              aria-label={`${level.label} — ${level.subtitle}${!isAvailable ? ' (terkunci)' : ''}`}
             >
-              {/* Shine overlay */}
               <span className="pointer-events-none absolute inset-0 rounded-3xl bg-gradient-to-br from-white/25 via-transparent to-transparent" />
               <span className="pointer-events-none absolute inset-1 rounded-[20px] border border-white/30" />
 
-              {/* Lock icon */}
-              {!unlocked && (
-                <span className="absolute right-3 top-3 text-2xl" aria-hidden="true">🔒</span>
+              {!isAvailable && (
+                <span className="absolute right-3 top-3 text-2xl" aria-hidden="true">
+                  {!hasQuestions ? '🔧' : '🔒'}
+                </span>
               )}
 
-              {/* Stars */}
               <StarRating count={3} filled={starsEarned} size={22} />
 
-              {/* Label */}
               <div>
                 <div className="text-[clamp(1.4rem,3vw,1.8rem)] leading-tight drop-shadow-md">{level.label}</div>
                 <div className="mt-1 text-sm font-bold uppercase tracking-widest text-white/80">{level.subtitle}</div>
               </div>
 
-              {/* Description */}
               <p className="text-xs font-semibold leading-snug text-white/75">{level.description}</p>
 
-              {/* Progress */}
-              {best > 0 && (
+              {best > 0 && total > 0 && (
                 <div className="w-full">
                   <ProgressBar current={best} total={total} color="rgba(255,255,255,0.9)" />
-                  <p className="mt-1 text-xs font-bold text-white/70">
-                    Skor terbaik: {best}/{total}
-                  </p>
+                  <p className="mt-1 text-xs font-bold text-white/70">Skor terbaik: {best}/{total}</p>
                 </div>
               )}
 
-              {/* Play button */}
-              {unlocked && (
-                <span className="inline-flex items-center gap-1.5 rounded-full bg-white px-4 py-1.5 text-sm font-black uppercase tracking-wide shadow-md transition group-hover:shadow-lg"
-                  style={{ color: level.color }}>
+              {isAvailable && (
+                <span
+                  className="inline-flex items-center gap-1.5 rounded-full bg-white px-4 py-1.5 text-sm font-black uppercase tracking-wide shadow-md transition group-hover:shadow-lg"
+                  style={{ color: level.color }}
+                >
                   {best > 0 ? 'Main Lagi' : 'Mulai'}
                   <ChevronRight size={14} aria-hidden="true" />
                 </span>
+              )}
+
+              {!hasQuestions && (
+                <span className="text-xs font-bold text-white/60">Soal menyusul...</span>
               )}
             </button>
           );
         })}
       </div>
 
-      {/* Decorative parikan quote */}
       <div className="w-full max-w-lg rounded-2xl border-2 border-yellow-400 bg-yellow-50 px-6 py-4 shadow-md">
         <p className="text-sm font-bold italic text-[#2e1d10] leading-relaxed">
           "Mlaku-mlaku menyang taman,<br />
@@ -161,64 +184,11 @@ function LevelSelect({ scores, onSelect, onReset }) {
   );
 }
 
-// ── Quiz screen ──────────────────────────────────────────────────────────────
-function QuizScreen({ level, onFinish, onBack }) {
-  const [current, setCurrent] = useState(0);
-  const [selected, setSelected] = useState(null);
-  const [answered, setAnswered] = useState(false);
-  const [score, setScore] = useState(0);
-  const [shake, setShake] = useState(false);
-  const [showExplanation, setShowExplanation] = useState(false);
-  const answerRef = useRef(null);
+// ── Top bar (shared) ─────────────────────────────────────────────────────────
+function QuizTopBar({ level, current, total, score, onBack }) {
   const playClick = useClickSound();
-  // Different tones for correct/wrong answers
-  const playCorrect = useClickSound({ frequency: 660, duration: 0.12, volume: 0.22 });
-  const playWrong = useClickSound({ frequency: 280, duration: 0.15, volume: 0.2 });
-
-  const q = level.questions[current];
-  const isLast = current === level.questions.length - 1;
-
-  const handleSelect = (idx) => {
-    if (answered) return;
-    setSelected(idx);
-    setAnswered(true);
-    setShowExplanation(true);
-    if (idx === q.answer) {
-      setScore((s) => s + 1);
-      playCorrect();
-    } else {
-      playWrong();
-      setShake(true);
-      setTimeout(() => setShake(false), 600);
-    }
-    // Scroll to answer area on mobile
-    setTimeout(() => answerRef.current?.scrollIntoView({ behavior: 'smooth', block: 'nearest' }), 100);
-  };
-
-  const handleNext = () => {
-    playClick();
-    if (isLast) {
-      onFinish(score + (selected === q.answer && !answered ? 1 : 0));
-    } else {
-      setCurrent((c) => c + 1);
-      setSelected(null);
-      setAnswered(false);
-      setShowExplanation(false);
-    }
-  };
-
-  const optionStyle = (idx) => {
-    if (!answered) {
-      return 'border-[#d1d5db] bg-white text-[#2e1d10] hover:bg-[#f3f4f6] hover:border-[#9ca3af] hover:-translate-y-0.5 cursor-pointer';
-    }
-    if (idx === q.answer) return 'border-green-500 bg-green-500 text-white';
-    if (idx === selected) return 'border-red-500 bg-red-500 text-white';
-    return 'border-[#e5e7eb] bg-[#f9fafb] text-[#9ca3af] opacity-60';
-  };
-
   return (
-    <div className="mx-auto flex w-full max-w-[780px] flex-col gap-5 px-4 py-2">
-      {/* Top bar */}
+    <div className="flex flex-col gap-3">
       <div className="flex items-center justify-between gap-4">
         <button
           type="button"
@@ -227,8 +197,10 @@ function QuizScreen({ level, onFinish, onBack }) {
         >
           ← Kembali
         </button>
-        <div className="flex items-center gap-2 rounded-full border-2 px-4 py-1.5 text-sm font-black shadow-md"
-          style={{ borderColor: level.color, background: 'white', color: level.color }}>
+        <div
+          className="flex items-center gap-2 rounded-full border-2 px-4 py-1.5 text-sm font-black shadow-md"
+          style={{ borderColor: level.color, background: 'white', color: level.color }}
+        >
           {level.label}
         </div>
         <div className="flex items-center gap-1.5 rounded-full bg-yellow-400 px-3 py-1.5 text-sm font-black text-yellow-900 shadow-md">
@@ -236,96 +208,282 @@ function QuizScreen({ level, onFinish, onBack }) {
           {score}
         </div>
       </div>
-
-      {/* Progress */}
       <div className="flex flex-col gap-1.5">
         <div className="flex justify-between text-xs font-bold text-[#2e1d10]">
-          <span>Soal {current + 1} saka {level.questions.length}</span>
-          <span>{Math.round(((current) / level.questions.length) * 100)}% rampung</span>
+          <span>Soal {current + 1} saka {total}</span>
+          <span>{Math.round((current / total) * 100)}% rampung</span>
         </div>
-        <ProgressBar current={current} total={level.questions.length} color={level.color} />
+        <ProgressBar current={current} total={total} color={level.color} />
       </div>
+    </div>
+  );
+}
 
+// ── Fill question (isian) ────────────────────────────────────────────────────
+function FillQuestion({ q, level, questionNum, onCorrect, onWrong, onNext, isLast }) {
+  const [input, setInput] = useState('');
+  const [status, setStatus] = useState('idle'); // 'idle' | 'correct' | 'wrong'
+  const [warning, setWarning] = useState('');
+  const [showExplanation, setShowExplanation] = useState(false);
+  const inputRef = useRef(null);
+  const feedbackRef = useRef(null);
+  const playCorrect = useClickSound({ frequency: 660, duration: 0.12, volume: 0.22 });
+  const playWrong = useClickSound({ frequency: 280, duration: 0.15, volume: 0.2 });
+  const playClick = useClickSound();
+
+  useEffect(() => {
+    // Reset state saat soal berganti
+    setInput('');
+    setStatus('idle');
+    setWarning('');
+    setShowExplanation(false);
+    setTimeout(() => inputRef.current?.focus(), 100);
+  }, [q.id]);
+
+  const handleSubmit = () => {
+    if (!input.trim()) {
+      setWarning('Tulisen jawabanmu dhisik!');
+      return;
+    }
+
+    // Cek masalah format
+    const issue = detectIssue(input);
+    if (issue) {
+      setWarning(issue);
+      return;
+    }
+
+    setWarning('');
+    const isCorrect = checkAnswer(input, q.answer, q.answers);
+
+    if (isCorrect) {
+      setStatus('correct');
+      setShowExplanation(true);
+      playCorrect();
+      onCorrect();
+    } else {
+      setStatus('wrong');
+      setShowExplanation(true);
+      playWrong();
+      onWrong();
+    }
+
+    setTimeout(() => feedbackRef.current?.scrollIntoView({ behavior: 'smooth', block: 'nearest' }), 100);
+  };
+
+  const handleKeyDown = (e) => {
+    if (e.key === 'Enter' && status === 'idle') handleSubmit();
+  };
+
+  const handleNext = () => {
+    playClick();
+    onNext();
+  };
+
+  // Render baris parikan — ganti ___ dengan input atau jawaban
+  const renderLines = () => {
+    return q.lines.map((line, i) => {
+      const isBlankLine = line.includes('___');
+      if (!isBlankLine) {
+        return (
+          <p key={i} className="text-[clamp(1rem,2.5vw,1.2rem)] font-bold leading-relaxed text-[#2e1d10]">
+            {line}
+          </p>
+        );
+      }
+
+      // Baris yang ada blank-nya
+      const parts = line.split('___');
+      return (
+        <p key={i} className="flex flex-wrap items-center gap-1 text-[clamp(1rem,2.5vw,1.2rem)] font-bold leading-relaxed text-[#2e1d10]">
+          {parts[0] && <span>{parts[0]}</span>}
+          {status === 'idle' ? (
+            <span className="inline-block min-w-[120px] border-b-2 border-dashed border-orange-400 px-1 text-orange-500 italic">
+              {input || '...'}
+            </span>
+          ) : (
+            <span className={`inline-block rounded px-2 py-0.5 font-black ${
+              status === 'correct'
+                ? 'bg-green-100 text-green-700'
+                : 'bg-red-100 text-red-600 line-through'
+            }`}>
+              {input}
+            </span>
+          )}
+          {status === 'wrong' && (
+            <span className="inline-block rounded bg-green-100 px-2 py-0.5 font-black text-green-700">
+              {q.answer}
+            </span>
+          )}
+          {parts[1] && <span>{parts[1]}</span>}
+        </p>
+      );
+    });
+  };
+
+  return (
+    <div className="flex flex-col gap-4">
       {/* Question card */}
       <div
-        className={`relative overflow-hidden rounded-3xl border-3 shadow-2xl sm:p-8 transition-all duration-300 ${shake ? 'animate-[shake_0.5s_ease-in-out]' : ''}`}
-        style={{ borderColor: `${level.color}`, borderWidth: '3px', background: 'white', padding: '1.5rem' }}
+        className="relative overflow-hidden rounded-3xl shadow-2xl"
+        style={{ borderColor: level.color, borderWidth: '3px', borderStyle: 'solid', background: 'white', padding: '1.5rem' }}
       >
         <span className="pointer-events-none absolute inset-0 rounded-3xl bg-gradient-to-br from-white/50 via-transparent to-transparent" />
 
-        {/* Question number badge */}
-        <div className="mb-4 inline-flex items-center gap-2 rounded-full px-3 py-1.5 text-xs font-black uppercase tracking-widest shadow-sm"
-          style={{ background: level.color, color: 'white' }}>
-          <Sparkles size={12} aria-hidden="true" />
-          Pitakon {current + 1}
+        <div
+          className="mb-4 inline-flex items-center gap-2 rounded-full px-3 py-1.5 text-xs font-black uppercase tracking-widest shadow-sm"
+          style={{ background: level.color, color: 'white' }}
+        >
+          <PenLine size={12} aria-hidden="true" />
+          Jangkepi Parikan {questionNum}
         </div>
 
-        <p className="relative text-[clamp(1.05rem,2.5vw,1.35rem)] font-extrabold leading-relaxed text-[#2e1d10]">
-          {q.question}
+        <p className="relative mb-4 text-xs font-black uppercase tracking-widest text-gray-400">
+          Rampungna ukara ing ngisor iki supaya dadi parikan!
         </p>
+
+        {/* Parikan lines */}
+        <div className="relative flex flex-col gap-1.5 rounded-xl bg-orange-50/60 p-4 ring-1 ring-orange-100">
+          <div className="absolute left-0 top-0 h-full w-1 rounded-l-xl" style={{ background: level.color }} />
+          {renderLines()}
+        </div>
       </div>
 
-      {/* Options */}
-      <div className="grid gap-3" role="group" aria-label="Pilihan jawaban">
-        {q.options.map((opt, idx) => (
-          <button
-            key={idx}
-            type="button"
-            disabled={answered}
-            onClick={() => handleSelect(idx)}
-            className={`group relative flex items-center gap-4 rounded-2xl border-2 p-4 text-left font-bold shadow-lg backdrop-blur-sm transition-all duration-200 sm:p-5 ${optionStyle(idx)}`}
-          >
-            {/* Option letter */}
-            <span className="grid size-9 shrink-0 place-items-center rounded-full border-2 border-current text-sm font-black transition-all group-hover:scale-110">
-              {String.fromCharCode(65 + idx)}
-            </span>
-            <span className="text-[clamp(0.9rem,2vw,1.1rem)] leading-snug">{opt}</span>
+      {/* Input area — hanya tampil saat belum jawab */}
+      {status === 'idle' && (
+        <div className="flex flex-col gap-2">
+          <label className="text-xs font-black uppercase tracking-widest text-[#2e1d10]/60">
+            Tulisen jawabanmu:
+          </label>
+          <div className="flex gap-2">
+            <input
+              ref={inputRef}
+              type="text"
+              value={input}
+              onChange={(e) => { setInput(e.target.value); setWarning(''); }}
+              onKeyDown={handleKeyDown}
+              placeholder="Ketik jawaban ing kene..."
+              className="flex-1 rounded-2xl border-3 border-orange-200 bg-white px-4 py-3 text-base font-bold text-[#2e1d10] shadow-md outline-none transition focus:border-orange-400 focus:ring-4 focus:ring-orange-100"
+              style={{ borderWidth: '3px' }}
+              aria-label="Input jawaban"
+              autoComplete="off"
+              spellCheck="false"
+            />
+            <button
+              type="button"
+              onClick={handleSubmit}
+              className="rounded-2xl border-3 px-5 py-3 text-sm font-black uppercase text-white shadow-md transition hover:-translate-y-0.5 active:translate-y-0"
+              style={{ background: level.color, borderColor: `${level.color}aa`, borderWidth: '3px' }}
+            >
+              Kirim
+            </button>
+          </div>
 
-            {/* Correct/wrong icon */}
-            {answered && idx === q.answer && (
-              <CheckCircle2 className="ml-auto shrink-0 text-green-400" size={22} aria-hidden="true" />
-            )}
-            {answered && idx === selected && idx !== q.answer && (
-              <XCircle className="ml-auto shrink-0 text-red-400" size={22} aria-hidden="true" />
-            )}
-          </button>
-        ))}
-      </div>
+          {/* Warning */}
+          {warning && (
+            <div className="flex items-center gap-2 rounded-xl bg-amber-50 px-4 py-2.5 text-sm font-bold text-amber-700 ring-1 ring-amber-200">
+              <AlertCircle size={15} aria-hidden="true" />
+              {warning}
+            </div>
+          )}
+        </div>
+      )}
 
-      {/* Explanation */}
+      {/* Feedback */}
       {showExplanation && (
         <div
-          ref={answerRef}
+          ref={feedbackRef}
           className={`rounded-2xl border-2 p-4 text-sm font-semibold leading-relaxed sm:p-5 ${
-            selected === q.answer
+            status === 'correct'
               ? 'border-green-500 bg-green-50 text-green-900'
-              : 'border-red-500 bg-red-50 text-red-900'
+              : 'border-red-400 bg-red-50 text-red-900'
           }`}
         >
-          <div className="mb-1.5 flex items-center gap-2 font-black uppercase tracking-wide">
-            {selected === q.answer
+          <div className="mb-2 flex items-center gap-2 font-black uppercase tracking-wide">
+            {status === 'correct'
               ? <><CheckCircle2 size={16} className="text-green-600" aria-hidden="true" /> Bener! 🎉</>
               : <><XCircle size={16} className="text-red-600" aria-hidden="true" /> Durung bener 😅</>
             }
           </div>
-          {q.explanation}
+          <p>{q.explanation}</p>
         </div>
       )}
 
       {/* Next button */}
-      {answered && (
+      {status !== 'idle' && (
         <button
           type="button"
           onClick={handleNext}
           className="flex w-full items-center justify-center gap-2 rounded-2xl border-4 border-white/80 py-4 text-lg font-black uppercase text-white shadow-xl transition-all duration-200 hover:-translate-y-1 hover:shadow-2xl active:translate-y-0"
           style={{ background: `linear-gradient(135deg, ${level.color}, ${level.color}bb)` }}
         >
-          {isLast ? (
-            <><Trophy size={20} aria-hidden="true" /> Lihat Hasil</>
-          ) : (
-            <>Soal Sabanjure <ChevronRight size={20} aria-hidden="true" /></>
-          )}
+          {isLast
+            ? <><Trophy size={20} aria-hidden="true" /> Lihat Hasil</>
+            : <>Soal Sabanjure <ChevronRight size={20} aria-hidden="true" /></>
+          }
         </button>
+      )}
+    </div>
+  );
+}
+
+// ── Quiz screen (orchestrator) ───────────────────────────────────────────────
+function QuizScreen({ level, onFinish, onBack }) {
+  const [current, setCurrent] = useState(0);
+  const [score, setScore] = useState(0);
+
+  const q = level.questions[current];
+  const isLast = current === level.questions.length - 1;
+
+  const handleCorrect = () => setScore(s => s + 1);
+  const handleWrong = () => {};
+
+  const handleNext = () => {
+    if (isLast) {
+      onFinish(score + (/* will be updated by handleCorrect before */ 0));
+    } else {
+      setCurrent(c => c + 1);
+    }
+    window.scrollTo({ top: 0, behavior: 'smooth' });
+  };
+
+  // Karena score update async, kita track di ref juga
+  const scoreRef = useRef(0);
+  const handleCorrectWithRef = () => {
+    scoreRef.current += 1;
+    setScore(scoreRef.current);
+  };
+
+  const handleNextWithFinish = () => {
+    if (isLast) {
+      onFinish(scoreRef.current);
+    } else {
+      setCurrent(c => c + 1);
+    }
+    window.scrollTo({ top: 0, behavior: 'smooth' });
+  };
+
+  return (
+    <div className="mx-auto flex w-full max-w-[780px] flex-col gap-5 px-4 py-2">
+      <QuizTopBar
+        level={level}
+        current={current}
+        total={level.questions.length}
+        score={score}
+        onBack={onBack}
+      />
+
+      {q.type === 'fill' && (
+        <FillQuestion
+          key={q.id}
+          q={q}
+          level={level}
+          questionNum={current + 1}
+          onCorrect={handleCorrectWithRef}
+          onWrong={handleWrong}
+          onNext={handleNextWithFinish}
+          isLast={isLast}
+        />
       )}
     </div>
   );
@@ -340,13 +498,12 @@ function ResultScreen({ level, score, onRetry, onBack }) {
 
   const feedback =
     pct === 100 ? { msg: 'Luar biasa! Sampurna! 🏆', sub: 'Kowe pancen jago banget!' } :
-    pct >= 80  ? { msg: 'Apik banget! 🌟', sub: 'Meh sampurna, terusna sinau!' } :
-    pct >= 50  ? { msg: 'Lumayan! 👍', sub: 'Isih ana sing kudu dilatih maneh.' } :
-                 { msg: 'Ayo coba maneh! 💪', sub: 'Sinau maneh banjur coba maneh ya!' };
+    pct >= 80   ? { msg: 'Apik banget! 🌟', sub: 'Meh sampurna, terusna sinau!' } :
+    pct >= 50   ? { msg: 'Lumayan! 👍', sub: 'Isih ana sing kudu dilatih maneh.' } :
+                  { msg: 'Ayo coba maneh! 💪', sub: 'Sinau maneh banjur coba maneh ya!' };
 
   return (
     <div className="mx-auto flex w-full max-w-[600px] flex-col items-center gap-6 px-4 py-2 text-center">
-      {/* Trophy animation */}
       <div
         className="relative flex size-32 items-center justify-center rounded-full border-4 border-white/50 shadow-2xl"
         style={{ background: `radial-gradient(circle, ${level.color}cc, ${level.color}66)` }}
@@ -356,25 +513,23 @@ function ResultScreen({ level, score, onRetry, onBack }) {
         </span>
       </div>
 
-      {/* Stars */}
       <StarRating count={3} filled={starsEarned} size={36} />
 
-      {/* Score */}
       <div>
-        <div className="text-[clamp(3rem,8vw,5rem)] font-black leading-none text-white drop-shadow-2xl"
-          style={{ WebkitTextStroke: '4px rgba(0,0,0,0.2)', paintOrder: 'stroke fill' }}>
+        <div
+          className="text-[clamp(3rem,8vw,5rem)] font-black leading-none text-white drop-shadow-2xl"
+          style={{ WebkitTextStroke: '4px rgba(0,0,0,0.2)', paintOrder: 'stroke fill' }}
+        >
           {score}<span className="text-[0.5em] text-white/60">/{total}</span>
         </div>
         <div className="mt-1 text-lg font-black text-white/80">{pct}% bener</div>
       </div>
 
-      {/* Feedback */}
       <div className="rounded-2xl border-2 border-white bg-white px-6 py-4 shadow-lg">
         <p className="text-xl font-black text-[#2e1d10]">{feedback.msg}</p>
         <p className="mt-1 text-sm font-semibold text-gray-600">{feedback.sub}</p>
       </div>
 
-      {/* Parikan reward */}
       {pct >= 80 && (
         <div className="w-full rounded-2xl border-2 border-yellow-400 bg-yellow-50 px-5 py-4 shadow-md">
           <p className="text-xs font-black uppercase tracking-widest text-yellow-700">🎁 Parikan Hadiah</p>
@@ -385,7 +540,6 @@ function ResultScreen({ level, score, onRetry, onBack }) {
         </div>
       )}
 
-      {/* Buttons */}
       <div className="flex w-full flex-col gap-3 sm:flex-row">
         <button
           type="button"
@@ -411,10 +565,9 @@ function ResultScreen({ level, score, onRetry, onBack }) {
 
 // ── Main GamePage ────────────────────────────────────────────────────────────
 export function GamePage() {
-  const [screen, setScreen] = useState('select'); // 'select' | 'quiz' | 'result'
+  const [screen, setScreen] = useState('select');
   const [activeLevel, setActiveLevel] = useState(null);
   const [lastScore, setLastScore] = useState(0);
-  // Skor tersimpan di localStorage — tetap ada setelah refresh
   const [scores, setScores] = useLocalStorage('javanesia-game-scores', {});
 
   const handleSelectLevel = (level) => {
