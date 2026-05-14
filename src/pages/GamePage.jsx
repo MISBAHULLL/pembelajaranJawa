@@ -2,6 +2,7 @@ import React, { useState, useRef, useEffect } from 'react';
 import { Star, Trophy, RotateCcw, ChevronRight, CheckCircle2, XCircle, Sparkles, Zap, Target, PenLine, AlertCircle, Info } from 'lucide-react';
 import { gameLevels } from '../data/gameParikan.js';
 import { useClickSound } from '../hooks/useClickSound.js';
+import { useFeedbackSound } from '../hooks/useFeedbackSound.js';
 import { useLocalStorage } from '../hooks/useLocalStorage.js';
 
 // ── Suku kata counter ────────────────────────────────────────────────────────
@@ -282,8 +283,7 @@ function FillQuestion({ q, level, questionNum, onCorrect, onWrong, onNext, isLas
   const [showExplanation, setShowExplanation] = useState(false);
   const inputRef = useRef(null);
   const feedbackRef = useRef(null);
-  const playCorrect = useClickSound({ frequency: 660, duration: 0.12, volume: 0.22 });
-  const playWrong = useClickSound({ frequency: 280, duration: 0.15, volume: 0.2 });
+  const { playCorrect, playWrong } = useFeedbackSound();
   const playClick = useClickSound();
 
   useEffect(() => {
@@ -298,6 +298,7 @@ function FillQuestion({ q, level, questionNum, onCorrect, onWrong, onNext, isLas
   const handleSubmit = () => {
     if (!input.trim()) {
       setWarning('Tulisen jawabanmu dhisik!');
+      playWrong();
       return;
     }
 
@@ -305,6 +306,7 @@ function FillQuestion({ q, level, questionNum, onCorrect, onWrong, onNext, isLas
     const issue = detectIssue(input);
     if (issue) {
       setWarning(issue);
+      playWrong();
       return;
     }
 
@@ -488,8 +490,7 @@ function ComposeQuestion({ q, level, questionNum, onScore, onNext, isLast }) {
   const [result, setResult] = useState(null);
   const [bestPoints, setBestPoints] = useState(0);
   const [submitted, setSubmitted] = useState(false);
-  const playCorrect = useClickSound({ frequency: 660, duration: 0.12, volume: 0.22 });
-  const playWrong = useClickSound({ frequency: 280, duration: 0.15, volume: 0.2 });
+  const { playCorrect, playWrong } = useFeedbackSound();
   const playClick = useClickSound();
   const feedbackRef = useRef(null);
 
@@ -501,7 +502,10 @@ function ComposeQuestion({ q, level, questionNum, onScore, onNext, isLast }) {
   }, [q.id]);
 
   const handleSubmit = () => {
-    if (!text.trim()) return;
+    if (!text.trim()) {
+      playWrong();
+      return;
+    }
     const scoring = scoreCompose(text, q.keyword);
     setResult(scoring);
     setSubmitted(true);

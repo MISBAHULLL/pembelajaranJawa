@@ -2,6 +2,48 @@ import { useState } from 'react';
 import { Play, ArrowLeft, Youtube, BookOpen } from 'lucide-react';
 import { useClickSound } from '../hooks/useClickSound.js';
 
+const getYoutubeVideoId = (video) => {
+  const source = video.embedUrl || video.youtubeUrl || '';
+
+  try {
+    const url = new URL(source);
+
+    if (url.hostname.includes('youtu.be')) {
+      return url.pathname.split('/').filter(Boolean)[0] || video.videoId;
+    }
+
+    if (url.pathname.includes('/embed/')) {
+      return url.pathname.split('/embed/')[1]?.split('/')[0] || video.videoId;
+    }
+
+    return url.searchParams.get('v') || video.videoId;
+  } catch {
+    return video.videoId;
+  }
+};
+
+const getYoutubeEmbedUrl = (video) => {
+  const id = getYoutubeVideoId(video);
+  const baseUrl = id
+    ? `https://www.youtube.com/embed/${id}`
+    : video.embedUrl;
+
+  try {
+    const url = new URL(baseUrl);
+    url.searchParams.set('rel', '0');
+    url.searchParams.set('modestbranding', '1');
+    url.searchParams.set('playsinline', '1');
+    return url.toString();
+  } catch {
+    return baseUrl;
+  }
+};
+
+const getYoutubeWatchUrl = (video) => {
+  const id = getYoutubeVideoId(video);
+  return id ? `https://youtu.be/${id}` : video.embedUrl;
+};
+
 export function VideoPage({ videos }) {
   const [selectedVideo, setSelectedVideo] = useState(null);
   const [thumbError, setThumbError] = useState({});
@@ -38,13 +80,25 @@ export function VideoPage({ videos }) {
         <article className="overflow-hidden rounded-3xl border-4 border-white/80 bg-white shadow-[0_8px_40px_rgba(46,29,16,0.18)]">
           {/* Video iframe */}
           <div className="aspect-video w-full bg-black">
-            <iframe
-              className="h-full w-full"
-              src={`${selectedVideo.embedUrl}?autoplay=1&rel=0&modestbranding=1`}
-              title={selectedVideo.title}
-              allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture; web-share"
-              allowFullScreen
-            />
+            {selectedVideo.localSrc ? (
+              <video
+                className="h-full w-full"
+                src={selectedVideo.localSrc}
+                poster={selectedVideo.poster}
+                controls
+                autoPlay
+                playsInline
+              />
+            ) : (
+              <iframe
+                className="h-full w-full"
+                src={getYoutubeEmbedUrl(selectedVideo)}
+                title={selectedVideo.title}
+                allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture; web-share"
+                referrerPolicy="strict-origin-when-cross-origin"
+                allowFullScreen
+              />
+            )}
           </div>
 
           {/* Info below player */}
@@ -64,7 +118,7 @@ export function VideoPage({ videos }) {
 
               {/* YouTube badge */}
               <a
-                href={`https://youtu.be/${selectedVideo.videoId}`}
+                href={getYoutubeWatchUrl(selectedVideo)}
                 target="_blank"
                 rel="noopener noreferrer"
                 className="shrink-0 inline-flex items-center gap-1.5 rounded-full bg-red-600 px-3 py-1.5 text-xs font-black text-white shadow-md transition hover:bg-red-700"
@@ -156,10 +210,11 @@ export function VideoPage({ videos }) {
 
 // ── VideoCard sub-component ──────────────────────────────────────────────────
 function VideoCard({ video, compact = false, thumbError, onThumbError, onClick }) {
+  const videoId = getYoutubeVideoId(video);
   // YouTube thumbnail: try maxresdefault first, fallback to hqdefault
-  const thumbUrl = thumbError[video.videoId]
-    ? `https://img.youtube.com/vi/${video.videoId}/hqdefault.jpg`
-    : `https://img.youtube.com/vi/${video.videoId}/maxresdefault.jpg`;
+  const thumbUrl = thumbError[videoId]
+    ? `https://img.youtube.com/vi/${videoId}/hqdefault.jpg`
+    : `https://img.youtube.com/vi/${videoId}/maxresdefault.jpg`;
 
   if (compact) {
     return (
@@ -175,7 +230,7 @@ function VideoCard({ video, compact = false, thumbError, onThumbError, onClick }
             alt=""
             aria-hidden="true"
             className="h-full w-full object-cover"
-            onError={() => onThumbError(prev => ({ ...prev, [video.videoId]: true }))}
+            onError={() => onThumbError(prev => ({ ...prev, [videoId]: true }))}
           />
           <div className="absolute inset-0 grid place-items-center bg-black/30 opacity-0 transition group-hover:opacity-100">
             <Play size={20} className="text-white" fill="white" aria-hidden="true" />
@@ -202,7 +257,7 @@ function VideoCard({ video, compact = false, thumbError, onThumbError, onClick }
           src={thumbUrl}
           alt={video.title}
           className="h-full w-full object-cover transition-transform duration-500 group-hover:scale-105"
-          onError={() => onThumbError(prev => ({ ...prev, [video.videoId]: true }))}
+          onError={() => onThumbError(prev => ({ ...prev, [videoId]: true }))}
         />
 
         {/* Dark overlay on hover */}
