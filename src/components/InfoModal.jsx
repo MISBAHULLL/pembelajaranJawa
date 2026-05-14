@@ -1,10 +1,12 @@
 import React, { useState, useEffect } from 'react';
 import { X, Volume2, Square, ChevronLeft, ChevronRight } from 'lucide-react';
+import { useClickSound } from '../hooks/useClickSound.js';
 
 export function InfoModal({ label, item, example, onClose, onNext, onPrev, hasNext, hasPrev }) {
   const [isPlaying, setIsPlaying] = useState(false);
   const [touchStart, setTouchStart] = useState(null);
   const [touchEnd, setTouchEnd] = useState(null);
+  const playClick = useClickSound();
 
   const lines = example ? example.split('\n') : [];
 
@@ -23,6 +25,7 @@ export function InfoModal({ label, item, example, onClose, onNext, onPrev, hasNe
   }, [item]);
 
   const toggleSpeech = () => {
+    playClick();
     if (isPlaying) {
       window.speechSynthesis.cancel();
       setIsPlaying(false);
@@ -81,7 +84,7 @@ export function InfoModal({ label, item, example, onClose, onNext, onPrev, hasNe
             className="absolute right-4 top-4 grid size-10 place-items-center rounded-full bg-white/20 text-white backdrop-blur-sm transition hover:bg-white hover:text-[#ff9b2f] focus-visible:outline-none focus-visible:ring-4 focus-visible:ring-white/50"
             type="button"
             aria-label="Tutup"
-            onClick={onClose}
+            onClick={() => { playClick(); onClose(); }}
           >
             <X size={24} aria-hidden="true" strokeWidth={3} />
           </button>
@@ -120,7 +123,7 @@ export function InfoModal({ label, item, example, onClose, onNext, onPrev, hasNe
           {(onPrev || onNext) && (
             <div className="mt-8 flex items-center justify-between gap-4 border-t-2 border-orange-100 pt-6">
               <button
-                onClick={onPrev}
+                onClick={() => { playClick(); onPrev?.(); }}
                 disabled={!hasPrev}
                 className={`inline-flex items-center gap-1.5 rounded-xl px-4 py-3 font-bold transition-all sm:gap-2 ${
                   hasPrev
@@ -133,7 +136,7 @@ export function InfoModal({ label, item, example, onClose, onNext, onPrev, hasNe
               </button>
               
               <button
-                onClick={onNext}
+                onClick={() => { playClick(); onNext?.(); }}
                 disabled={!hasNext}
                 className={`inline-flex items-center gap-1.5 rounded-xl px-4 py-3 font-bold shadow-md transition-all sm:gap-2 ${
                   hasNext

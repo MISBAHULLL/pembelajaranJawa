@@ -4,17 +4,16 @@ export function SceneLayout({ children, isHome, label, variant = 'materi' }) {
   return (
     <section
       className={`sky-scene relative isolate flex-1 transition-all duration-500 ${
-        isHome 
-          ? 'home-scene grid min-h-screen content-center px-4 py-8 sm:px-6 sm:py-12 lg:px-8' 
-          : isVideo 
-          ? 'video-scene min-h-[calc(100vh-74px)] px-4 pb-10 pt-10 sm:px-6 sm:pb-12 sm:pt-12 lg:px-12' 
-          : 'min-h-[calc(100vh-74px)] px-4 pb-10 pt-10 sm:px-6 sm:pb-12 sm:pt-12 lg:px-16'
+        isHome
+          ? 'home-scene grid min-h-screen content-center px-4 py-8 sm:px-6 sm:py-12 lg:px-8'
+          : isVideo
+          ? 'video-scene min-h-[calc(100vh-56px)] px-4 pb-10 pt-8 sm:min-h-[calc(100vh-62px)] sm:px-6 sm:pb-12 sm:pt-10 lg:px-12'
+          : 'min-h-[calc(100vh-56px)] px-4 pb-10 pt-8 sm:min-h-[calc(100vh-62px)] sm:px-6 sm:pb-12 sm:pt-10 lg:px-16'
       }`}
       aria-label={label}
     >
       {!isHome && !isVideo && (
         <>
-          <div className="pointer-events-none absolute inset-x-0 top-0 z-[-1] h-[46px] opacity-30 [background-image:url('/assets/batik-border.svg')] [background-size:260px_46px] animate-[slideRight_20s_linear_infinite]" />
           <img
             className="pointer-events-none absolute bottom-48 left-1/2 z-[-3] w-[min(800px,92vw)] -translate-x-1/2 opacity-50 drop-shadow-2xl transition-opacity duration-700 sm:bottom-16 sm:opacity-70 lg:bottom-20"
             src="/assets/javanese-palace.svg"

@@ -1,6 +1,7 @@
 import React, { useState, useRef } from 'react';
 import { Star, Trophy, RotateCcw, ChevronRight, CheckCircle2, XCircle, Sparkles, Zap, Target } from 'lucide-react';
 import { gameLevels } from '../data/gameParikan.js';
+import { useClickSound } from '../hooks/useClickSound.js';
 
 // ── Star rating display ──────────────────────────────────────────────────────
 function StarRating({ count, filled = 0, size = 20 }) {
@@ -34,6 +35,7 @@ function ProgressBar({ current, total, color }) {
 
 // ── Level selection screen ───────────────────────────────────────────────────
 function LevelSelect({ scores, onSelect }) {
+  const playClick = useClickSound();
   const totalScore = Object.values(scores).reduce((a, b) => a + b, 0);
   const maxScore = gameLevels.reduce((a, l) => a + l.questions.length, 0);
 
@@ -77,7 +79,7 @@ function LevelSelect({ scores, onSelect }) {
               key={level.id}
               type="button"
               disabled={!unlocked}
-              onClick={() => onSelect(level)}
+              onClick={() => { playClick(); onSelect(level); }}
               className={`group relative flex flex-col items-center gap-4 overflow-hidden rounded-3xl border-4 p-6 text-center font-black text-white shadow-2xl transition-all duration-300
                 ${unlocked
                   ? 'cursor-pointer hover:-translate-y-2 hover:scale-[1.03] active:translate-y-0 active:scale-100'
@@ -155,6 +157,10 @@ function QuizScreen({ level, onFinish, onBack }) {
   const [shake, setShake] = useState(false);
   const [showExplanation, setShowExplanation] = useState(false);
   const answerRef = useRef(null);
+  const playClick = useClickSound();
+  // Different tones for correct/wrong answers
+  const playCorrect = useClickSound({ frequency: 660, duration: 0.12, volume: 0.22 });
+  const playWrong = useClickSound({ frequency: 280, duration: 0.15, volume: 0.2 });
 
   const q = level.questions[current];
   const isLast = current === level.questions.length - 1;
@@ -166,7 +172,9 @@ function QuizScreen({ level, onFinish, onBack }) {
     setShowExplanation(true);
     if (idx === q.answer) {
       setScore((s) => s + 1);
+      playCorrect();
     } else {
+      playWrong();
       setShake(true);
       setTimeout(() => setShake(false), 600);
     }
@@ -175,6 +183,7 @@ function QuizScreen({ level, onFinish, onBack }) {
   };
 
   const handleNext = () => {
+    playClick();
     if (isLast) {
       onFinish(score + (selected === q.answer && !answered ? 1 : 0));
     } else {
@@ -200,7 +209,7 @@ function QuizScreen({ level, onFinish, onBack }) {
       <div className="flex items-center justify-between gap-4">
         <button
           type="button"
-          onClick={onBack}
+          onClick={() => { playClick(); onBack(); }}
           className="rounded-xl border-2 border-white bg-white/95 px-3 py-2 text-xs font-black uppercase text-[#2e1d10] shadow-md transition hover:bg-white hover:-translate-y-0.5"
         >
           ← Kembali
@@ -311,6 +320,7 @@ function QuizScreen({ level, onFinish, onBack }) {
 
 // ── Result screen ────────────────────────────────────────────────────────────
 function ResultScreen({ level, score, onRetry, onBack }) {
+  const playClick = useClickSound();
   const total = level.questions.length;
   const pct = Math.round((score / total) * 100);
   const starsEarned = pct >= 80 ? 3 : pct >= 50 ? 2 : pct > 0 ? 1 : 0;
@@ -366,7 +376,7 @@ function ResultScreen({ level, score, onRetry, onBack }) {
       <div className="flex w-full flex-col gap-3 sm:flex-row">
         <button
           type="button"
-          onClick={onRetry}
+          onClick={() => { playClick(); onRetry(); }}
           className="flex flex-1 items-center justify-center gap-2 rounded-2xl border-4 border-gray-300 bg-white py-4 text-base font-black uppercase text-gray-700 shadow-lg transition hover:-translate-y-1 hover:bg-gray-50"
         >
           <RotateCcw size={18} aria-hidden="true" />
@@ -374,7 +384,7 @@ function ResultScreen({ level, score, onRetry, onBack }) {
         </button>
         <button
           type="button"
-          onClick={onBack}
+          onClick={() => { playClick(); onBack(); }}
           className="flex flex-1 items-center justify-center gap-2 rounded-2xl border-4 border-white/80 py-4 text-base font-black uppercase text-white shadow-xl transition hover:-translate-y-1"
           style={{ background: `linear-gradient(135deg, ${level.color}, ${level.color}bb)` }}
         >

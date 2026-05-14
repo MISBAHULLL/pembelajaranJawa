@@ -2,6 +2,7 @@ import React, { useState } from 'react';
 import { mainMenu } from './data/mainMenu.js';
 import { materiList } from './data/materi.js';
 import { videoList } from './data/videos.js';
+import { NavBar } from './components/NavBar.jsx';
 import { HomeBar } from './components/HomeBar.jsx';
 import { InfoModal } from './components/InfoModal.jsx';
 import { SceneLayout } from './components/SceneLayout.jsx';
@@ -34,7 +35,6 @@ export default function App() {
       window.scrollTo({ top: 0, behavior: 'smooth' });
       return;
     }
-
     setActiveMenu(item);
   };
 
@@ -60,9 +60,31 @@ export default function App() {
   const hasNextMateri = activeMateri && materiList.findIndex(m => m.title === activeMateri.title) < materiList.length - 1;
   const hasPrevMateri = activeMateri && materiList.findIndex(m => m.title === activeMateri.title) > 0;
 
+  // ── Breadcrumb config per page ──────────────────────────────────────────────
+  const pageCrumbs = {
+    learning: [{ label: selectedLearning.title }],
+    materi:   [{ label: 'Materi Parikan' }],
+    video:    [{ label: 'Video Pembelajaran' }],
+    game:     [{ label: 'Game Parikan' }],
+  };
+  const crumbs = pageCrumbs[page] ?? [];
+
+  // ── Scene label ─────────────────────────────────────────────────────────────
+  const sceneLabel =
+    page === 'home'     ? 'Javanesia' :
+    page === 'video'    ? 'Video Pembelajaran' :
+    page === 'game'     ? 'Game Parikan' :
+    page === 'learning' ? selectedLearning.title :
+                          'Materi Parikan Jawa';
+
   return (
     <main className="flex min-h-screen flex-col overflow-x-hidden bg-[#f7ead7] text-[#2e1d10]">
-      <SceneLayout variant={page} isHome={page === 'home'} label={page === 'home' ? 'Javanesia' : page === 'video' ? 'Video Pembelajaran' : page === 'game' ? 'Game Parikan' : page === 'learning' ? selectedLearning.title : 'Materi Parikan Jawa'}>
+      {/* Navbar — hidden on home, shown on all inner pages */}
+      {page !== 'home' && (
+        <NavBar crumbs={crumbs} onHome={goHome} />
+      )}
+
+      <SceneLayout variant={page} isHome={page === 'home'} label={sceneLabel}>
         {page === 'home' && (
           <HomePage menuItems={mainMenu} onChooseMenu={openMenu} />
         )}
@@ -83,14 +105,15 @@ export default function App() {
         {page === 'game' && <GamePage />}
       </SceneLayout>
 
+      {/* Bottom home bar — tetap ada seperti sebelumnya */}
       {page !== 'home' && <HomeBar onHome={goHome} />}
 
       {activeMenu && <InfoModal label="Javanesia" item={activeMenu} onClose={() => setActiveMenu(null)} />}
       {activeMateri && (
-        <InfoModal 
-          label="Materi Parikan" 
-          item={activeMateri} 
-          example={activeMateri.example} 
+        <InfoModal
+          label="Materi Parikan"
+          item={activeMateri}
+          example={activeMateri.example}
           onClose={() => setActiveMateri(null)}
           onNext={handleNextMateri}
           onPrev={handlePrevMateri}
