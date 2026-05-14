@@ -191,6 +191,11 @@ button {
   100% { transform: scale(1); }
 }
 
+@keyframes splashDot {
+  0%, 100% { transform: translateY(0);    opacity: 0.4; }
+  50%       { transform: translateY(-6px); opacity: 1;   }
+}
+
 @media (prefers-reduced-motion: reduce) {
   *,
   *::before,

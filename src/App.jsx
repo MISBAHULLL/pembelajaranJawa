@@ -6,6 +6,8 @@ import { NavBar } from './components/NavBar.jsx';
 import { HomeBar } from './components/HomeBar.jsx';
 import { InfoModal } from './components/InfoModal.jsx';
 import { SceneLayout } from './components/SceneLayout.jsx';
+import { SplashScreen } from './components/SplashScreen.jsx';
+import { OpeningPage } from './pages/OpeningPage.jsx';
 import { HomePage } from './pages/HomePage.jsx';
 import { LearningPage } from './pages/LearningPage.jsx';
 import { MateriPage } from './pages/MateriPage.jsx';
@@ -13,11 +15,35 @@ import { MateriDetailPage } from './pages/MateriDetailPage.jsx';
 import { VideoPage } from './pages/VideoPage.jsx';
 import { GamePage } from './pages/GamePage.jsx';
 
+// Cek apakah splash sudah ditampilkan di sesi ini
+const hasSeenSplash = () => {
+  try { return sessionStorage.getItem('javanesia-splash') === '1'; }
+  catch { return false; }
+};
+
+const markSplashSeen = () => {
+  try { sessionStorage.setItem('javanesia-splash', '1'); }
+  catch { /* ignore */ }
+};
+
 export default function App() {
   const [page, setPage] = useState('home');
   const [selectedLearning, setSelectedLearning] = useState(mainMenu[0]);
   const [activeMenu, setActiveMenu] = useState(null);
   const [activeMateriIndex, setActiveMateriIndex] = useState(0);
+  // Splash hanya tampil jika belum pernah muncul di sesi ini
+  const [showSplash, setShowSplash] = useState(() => !hasSeenSplash());
+  // Opening tampil setelah splash, sebelum home
+  const [showOpening, setShowOpening] = useState(true);
+
+  const handleSplashDone = () => {
+    markSplashSeen();
+    setShowSplash(false);
+  };
+
+  const handleEnter = () => {
+    setShowOpening(false);
+  };
 
   const goHome = () => {
     setActiveMenu(null);
@@ -35,7 +61,6 @@ export default function App() {
     setActiveMenu(item);
   };
 
-  // Open materi detail by index
   const openMateri = (item) => {
     const idx = materiList.findIndex(m => m.title === item.title);
     setActiveMateriIndex(idx >= 0 ? idx : 0);
@@ -81,53 +106,67 @@ export default function App() {
 
   return (
     <main className="flex min-h-screen flex-col overflow-x-hidden bg-[#f7ead7] text-[#2e1d10]">
-      {page !== 'home' && (
-        <NavBar crumbs={crumbs} onHome={goHome} />
+
+      {/* Splash screen — hanya muncul sekali per sesi */}
+      {showSplash && <SplashScreen onDone={handleSplashDone} />}
+
+      {/* Opening page — muncul setelah splash, sebelum home */}
+      {!showSplash && showOpening && (
+        <OpeningPage onEnter={handleEnter} />
       )}
 
-      <SceneLayout
-        variant={page === 'materi-detail' ? 'materi' : page}
-        isHome={page === 'home'}
-        label={sceneLabel}
-      >
-        {/* key=page → React remount saat halaman ganti, CSS animation langsung jalan */}
-        <div key={page} className="page-enter">
-          {page === 'home' && (
-            <HomePage menuItems={mainMenu} onChooseMenu={openMenu} />
+      {/* App utama — hanya render setelah opening selesai */}
+      {!showOpening && (
+        <>
+          {page !== 'home' && (
+            <NavBar crumbs={crumbs} onHome={goHome} />
           )}
 
-          {page === 'learning' && (
-            <LearningPage item={selectedLearning} />
+          <SceneLayout
+            variant={page === 'materi-detail' ? 'materi' : page}
+            isHome={page === 'home'}
+            label={sceneLabel}
+          >
+            <div key={page} className="page-enter">
+              {page === 'home' && (
+                <HomePage menuItems={mainMenu} onChooseMenu={openMenu} />
+              )}
+
+              {page === 'learning' && (
+                <LearningPage item={selectedLearning} />
+              )}
+
+              {page === 'materi' && (
+                <MateriPage materiItems={materiList} onOpenMateri={openMateri} />
+              )}
+
+              {page === 'materi-detail' && (
+                <MateriDetailPage
+                  item={activeMateri}
+                  index={activeMateriIndex}
+                  total={materiList.length}
+                  hasNext={activeMateriIndex < materiList.length - 1}
+                  hasPrev={activeMateriIndex > 0}
+                  onNext={handleNextMateri}
+                  onPrev={handlePrevMateri}
+                  onBackToList={() => { setPage('materi'); window.scrollTo({ top: 0, behavior: 'smooth' }); }}
+                />
+              )}
+
+              {page === 'video' && <VideoPage videos={videoList} />}
+
+              {page === 'game' && <GamePage />}
+            </div>
+          </SceneLayout>
+
+          {page !== 'home' && <HomeBar onHome={goHome} />}
+
+          {activeMenu && (
+            <InfoModal label="Javanesia" item={activeMenu} onClose={() => setActiveMenu(null)} />
           )}
-
-          {page === 'materi' && (
-            <MateriPage materiItems={materiList} onOpenMateri={openMateri} />
-          )}
-
-          {page === 'materi-detail' && (
-            <MateriDetailPage
-              item={activeMateri}
-              index={activeMateriIndex}
-              total={materiList.length}
-              hasNext={activeMateriIndex < materiList.length - 1}
-              hasPrev={activeMateriIndex > 0}
-              onNext={handleNextMateri}
-              onPrev={handlePrevMateri}
-              onBackToList={() => { setPage('materi'); window.scrollTo({ top: 0, behavior: 'smooth' }); }}
-            />
-          )}
-
-          {page === 'video' && <VideoPage videos={videoList} />}
-
-          {page === 'game' && <GamePage />}
-        </div>
-      </SceneLayout>
-
-      {page !== 'home' && <HomeBar onHome={goHome} />}
-
-      {activeMenu && (
-        <InfoModal label="Javanesia" item={activeMenu} onClose={() => setActiveMenu(null)} />
+        </>
       )}
+
     </main>
   );
 }
