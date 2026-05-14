@@ -1,8 +1,54 @@
 import React, { useState, useRef, useEffect } from 'react';
-import { Star, Trophy, RotateCcw, ChevronRight, CheckCircle2, XCircle, Sparkles, Zap, Target, PenLine, AlertCircle } from 'lucide-react';
+import { Star, Trophy, RotateCcw, ChevronRight, CheckCircle2, XCircle, Sparkles, Zap, Target, PenLine, AlertCircle, Info } from 'lucide-react';
 import { gameLevels } from '../data/gameParikan.js';
 import { useClickSound } from '../hooks/useClickSound.js';
 import { useLocalStorage } from '../hooks/useLocalStorage.js';
+
+// ── Suku kata counter ────────────────────────────────────────────────────────
+// Hitung suku kata sederhana: pisah per vokal cluster
+function countSyllables(word) {
+  const cleaned = word.toLowerCase().replace(/[^a-z]/g, '');
+  const matches = cleaned.match(/[aeiouàáâãäåèéêëìíîïòóôõöùúûü]+/g);
+  return matches ? matches.length : 0;
+}
+
+function countLineSyllables(line) {
+  return line.trim().split(/\s+/).reduce((sum, w) => sum + countSyllables(w), 0);
+}
+
+// ── Compose scoring ──────────────────────────────────────────────────────────
+// Nilai per soal = 10, dibagi:
+//   kata kunci ada   = 3 poin
+//   jumlah baris ok  = 3 poin
+//   suku kata 8-12   = 4 poin
+function scoreCompose(text, keyword) {
+  const lines = text.split('\n').map(l => l.trim()).filter(Boolean);
+  const fullText = text.toLowerCase();
+
+  // Kriteria 1: kata kunci ada
+  const hasKeyword = fullText.includes(keyword.toLowerCase());
+
+  // Kriteria 2: jumlah baris 2 atau 4
+  const validLines = lines.length === 2 || lines.length === 4;
+
+  // Kriteria 3: semua baris 8-12 suku kata
+  const syllableCounts = lines.map(countLineSyllables);
+  const allSyllablesOk = lines.length > 0 && syllableCounts.every(c => c >= 8 && c <= 12);
+
+  const points =
+    (hasKeyword ? 3 : 0) +
+    (validLines ? 3 : 0) +
+    (allSyllablesOk ? 4 : 0);
+
+  return {
+    points,
+    hasKeyword,
+    validLines,
+    allSyllablesOk,
+    syllableCounts,
+    lineCount: lines.length,
+  };
+}
 
 // ── Fuzzy validation helper ──────────────────────────────────────────────────
 // Normalisasi: lowercase, trim, hapus tanda baca di awal/akhir, spasi ganda
@@ -106,10 +152,19 @@ function LevelSelect({ scores, onSelect, onReset }) {
         {gameLevels.map((level, idx) => {
           const best = scores[level.id] ?? 0;
           const total = level.questions.length;
-          const pct = total > 0 ? Math.round((best / total) * 100) : 0;
+          const isCompose = level.questions[0]?.type === 'compose';
+          const maxScore = isCompose ? total * 10 : total;
+          const pct = maxScore > 0 ? Math.round((best / maxScore) * 100) : 0;
           const starsEarned = pct >= 80 ? 3 : pct >= 50 ? 2 : pct > 0 ? 1 : 0;
           const hasQuestions = total > 0;
-          const unlocked = idx === 0 || (scores[gameLevels[idx - 1].id] ?? 0) >= Math.ceil(gameLevels[idx - 1].questions.length * 0.7);
+          // Unlock: skor level sebelumnya >= 70% dari skor maksimalnya
+          const prevLevel = gameLevels[idx - 1];
+          const prevMax = prevLevel
+            ? (prevLevel.questions[0]?.type === 'compose'
+                ? prevLevel.questions.length * 10
+                : prevLevel.questions.length)
+            : 0;
+          const unlocked = idx === 0 || (scores[gameLevels[idx - 1].id] ?? 0) >= Math.ceil(prevMax * 0.7);
           const isAvailable = hasQuestions && unlocked;
 
           return (
@@ -150,8 +205,8 @@ function LevelSelect({ scores, onSelect, onReset }) {
 
               {best > 0 && total > 0 && (
                 <div className="w-full">
-                  <ProgressBar current={best} total={total} color="rgba(255,255,255,0.9)" />
-                  <p className="mt-1 text-xs font-bold text-white/70">Skor terbaik: {best}/{total}</p>
+                  <ProgressBar current={best} total={maxScore} color="rgba(255,255,255,0.9)" />
+                  <p className="mt-1 text-xs font-bold text-white/70">Skor terbaik: {best}/{maxScore}</p>
                 </div>
               )}
 
@@ -427,31 +482,265 @@ function FillQuestion({ q, level, questionNum, onCorrect, onWrong, onNext, isLas
   );
 }
 
+// ── Compose question (nulis parikan) ─────────────────────────────────────────
+function ComposeQuestion({ q, level, questionNum, onScore, onNext, isLast }) {
+  const [text, setText] = useState('');
+  const [result, setResult] = useState(null);
+  const [bestPoints, setBestPoints] = useState(0);
+  const [submitted, setSubmitted] = useState(false);
+  const playCorrect = useClickSound({ frequency: 660, duration: 0.12, volume: 0.22 });
+  const playWrong = useClickSound({ frequency: 280, duration: 0.15, volume: 0.2 });
+  const playClick = useClickSound();
+  const feedbackRef = useRef(null);
+
+  useEffect(() => {
+    setText('');
+    setResult(null);
+    setBestPoints(0);
+    setSubmitted(false);
+  }, [q.id]);
+
+  const handleSubmit = () => {
+    if (!text.trim()) return;
+    const scoring = scoreCompose(text, q.keyword);
+    setResult(scoring);
+    setSubmitted(true);
+    if (scoring.points > bestPoints) {
+      setBestPoints(scoring.points);
+      onScore(scoring.points);
+    }
+    if (scoring.points === 10) playCorrect();
+    else if (scoring.points >= 6) playClick();
+    else playWrong();
+    setTimeout(() => feedbackRef.current?.scrollIntoView({ behavior: 'smooth', block: 'nearest' }), 100);
+  };
+
+  const handleRevise = () => {
+    setResult(null);
+    setSubmitted(false);
+  };
+
+  const handleNext = () => { playClick(); onNext(); };
+
+  const lines = text.split('\n').map(l => l.trim()).filter(Boolean);
+
+  return (
+    <div className="flex flex-col gap-4">
+      {/* Soal card */}
+      <div
+        className="relative overflow-hidden rounded-3xl shadow-2xl"
+        style={{ borderColor: level.color, borderWidth: '3px', borderStyle: 'solid', background: 'white', padding: '1.5rem' }}
+      >
+        <span className="pointer-events-none absolute inset-0 rounded-3xl bg-gradient-to-br from-white/50 via-transparent to-transparent" />
+        <div
+          className="mb-4 inline-flex items-center gap-2 rounded-full px-3 py-1.5 text-xs font-black uppercase tracking-widest shadow-sm"
+          style={{ background: level.color, color: 'white' }}
+        >
+          <PenLine size={12} aria-hidden="true" />
+          Nulis Parikan {questionNum}
+        </div>
+        <p className="relative mb-3 text-xs font-black uppercase tracking-widest text-gray-400">
+          Tulisen parikan nganggo kata kunci ing ngisor iki!
+        </p>
+        <div className="relative mb-4 flex flex-wrap items-center gap-3">
+          <div className="rounded-xl bg-amber-50 px-4 py-2 ring-2 ring-amber-300">
+            <span className="text-xs font-black uppercase tracking-widest text-amber-600">Kata Kunci</span>
+            <p className="mt-0.5 text-xl font-black text-amber-800">{q.keyword}</p>
+          </div>
+          <div className="rounded-xl bg-orange-50 px-4 py-2 ring-1 ring-orange-200">
+            <span className="text-xs font-black uppercase tracking-widest text-orange-500">Tema</span>
+            <p className="mt-0.5 text-sm font-bold text-orange-700">{q.theme}</p>
+          </div>
+        </div>
+        <div className="relative rounded-xl bg-gray-50 px-4 py-3 ring-1 ring-gray-200">
+          <p className="mb-1.5 text-xs font-black uppercase tracking-widest text-gray-500">Syarat Parikan:</p>
+          <ul className="flex flex-col gap-1 text-xs font-semibold text-gray-600">
+            <li className="flex items-center gap-1.5"><span className="text-amber-500">✦</span> 2 utawa 4 baris</li>
+            <li className="flex items-center gap-1.5"><span className="text-amber-500">✦</span> Saben baris 8–12 suku kata</li>
+            <li className="flex items-center gap-1.5"><span className="text-amber-500">✦</span> Kata kunci kudu ana ing parikan</li>
+          </ul>
+        </div>
+      </div>
+
+      {/* Tuladha */}
+      <div className="rounded-2xl border-2 border-amber-200 bg-amber-50 px-4 py-3">
+        <div className="flex items-center gap-1.5 mb-2">
+          <Info size={13} className="text-amber-600" aria-hidden="true" />
+          <span className="text-xs font-black uppercase tracking-widest text-amber-600">Tuladha</span>
+        </div>
+        <div className="flex flex-col gap-0.5">
+          {q.example.split('\n').map((line, i) => (
+            <p key={i} className="text-sm font-bold italic text-amber-800">{line}</p>
+          ))}
+        </div>
+      </div>
+
+      {/* Textarea */}
+      {!submitted && (
+        <div className="flex flex-col gap-2">
+          <div className="flex items-center justify-between">
+            <label className="text-xs font-black uppercase tracking-widest text-[#2e1d10]/60">
+              Tulisen parikanmu ing kene:
+            </label>
+            <span className="text-xs font-bold text-gray-400">
+              {lines.length} baris
+            </span>
+          </div>
+          <textarea
+            value={text}
+            onChange={e => setText(e.target.value)}
+            placeholder={'Baris 1...\nBaris 2...\n(opsional) Baris 3...\n(opsional) Baris 4...'}
+            rows={4}
+            className="w-full resize-none rounded-2xl border-2 border-orange-200 bg-white px-4 py-3 text-base font-bold text-[#2e1d10] shadow-md outline-none transition focus:border-orange-400 focus:ring-4 focus:ring-orange-100"
+            style={{ borderWidth: '2px' }}
+            aria-label="Input parikan"
+            spellCheck="false"
+          />
+          {/* Live suku kata counter */}
+          {lines.length > 0 && (
+            <div className="flex flex-wrap gap-2">
+              {lines.map((line, i) => {
+                const count = countLineSyllables(line);
+                const ok = count >= 8 && count <= 12;
+                return (
+                  <span
+                    key={i}
+                    className={`rounded-full px-3 py-1 text-xs font-black ${
+                      ok ? 'bg-green-100 text-green-700' : 'bg-red-100 text-red-600'
+                    }`}
+                  >
+                    Baris {i + 1}: {count} suku kata {ok ? '✓' : '✗'}
+                  </span>
+                );
+              })}
+            </div>
+          )}
+          <button
+            type="button"
+            onClick={handleSubmit}
+            disabled={!text.trim()}
+            className="rounded-2xl py-3 text-sm font-black uppercase text-white shadow-md transition hover:-translate-y-0.5 disabled:opacity-40 disabled:cursor-not-allowed"
+            style={{ background: level.color }}
+          >
+            Kirim Parikan
+          </button>
+        </div>
+      )}
+
+      {/* Feedback */}
+      {result && (
+        <div ref={feedbackRef} className="flex flex-col gap-3">
+          {/* Skor */}
+          <div
+            className="flex items-center justify-between rounded-2xl px-5 py-4 text-white shadow-lg"
+            style={{ background: `linear-gradient(135deg, ${level.color}, ${level.color}bb)` }}
+          >
+            <div>
+              <p className="text-xs font-black uppercase tracking-widest text-white/70">Nilaimu</p>
+              <p className="text-3xl font-black">{result.points} <span className="text-lg text-white/60">/ 10</span></p>
+            </div>
+            <div className="text-4xl" aria-hidden="true">
+              {result.points === 10 ? '🏆' : result.points >= 7 ? '🌟' : result.points >= 4 ? '👍' : '💪'}
+            </div>
+          </div>
+
+          {/* Kriteria */}
+          <div className="rounded-2xl border-2 border-gray-100 bg-white p-4 shadow-sm">
+            <p className="mb-3 text-xs font-black uppercase tracking-widest text-gray-400">Hasil Penilaian:</p>
+            <div className="flex flex-col gap-2">
+              <div className={`flex items-center justify-between rounded-xl px-4 py-2.5 ${result.hasKeyword ? 'bg-green-50 text-green-800' : 'bg-red-50 text-red-700'}`}>
+                <div className="flex items-center gap-2">
+                  {result.hasKeyword ? <CheckCircle2 size={15} /> : <XCircle size={15} />}
+                  <span className="text-sm font-bold">Kata kunci "{q.keyword}" ana</span>
+                </div>
+                <span className="text-sm font-black">{result.hasKeyword ? '+3' : '+0'}</span>
+              </div>
+              <div className={`flex items-center justify-between rounded-xl px-4 py-2.5 ${result.validLines ? 'bg-green-50 text-green-800' : 'bg-red-50 text-red-700'}`}>
+                <div className="flex items-center gap-2">
+                  {result.validLines ? <CheckCircle2 size={15} /> : <XCircle size={15} />}
+                  <span className="text-sm font-bold">Jumlah baris {result.lineCount} {result.validLines ? '(2 utawa 4 ✓)' : '(kudu 2 utawa 4)'}</span>
+                </div>
+                <span className="text-sm font-black">{result.validLines ? '+3' : '+0'}</span>
+              </div>
+              <div className={`flex items-center justify-between rounded-xl px-4 py-2.5 ${result.allSyllablesOk ? 'bg-green-50 text-green-800' : 'bg-red-50 text-red-700'}`}>
+                <div className="flex items-center gap-2">
+                  {result.allSyllablesOk ? <CheckCircle2 size={15} /> : <XCircle size={15} />}
+                  <span className="text-sm font-bold">Suku kata 8–12 saben baris</span>
+                </div>
+                <span className="text-sm font-black">{result.allSyllablesOk ? '+4' : '+0'}</span>
+              </div>
+              {!result.allSyllablesOk && result.syllableCounts.length > 0 && (
+                <div className="flex flex-wrap gap-1.5 px-1">
+                  {result.syllableCounts.map((c, i) => (
+                    <span key={i} className={`rounded-full px-2.5 py-1 text-xs font-bold ${c >= 8 && c <= 12 ? 'bg-green-100 text-green-700' : 'bg-red-100 text-red-600'}`}>
+                      Baris {i + 1}: {c} suku kata
+                    </span>
+                  ))}
+                </div>
+              )}
+            </div>
+          </div>
+
+          {/* Skor terbaik */}
+          {bestPoints > result.points && (
+            <p className="text-center text-xs font-bold text-white/70">
+              Skor terbaikmu: {bestPoints}/10
+            </p>
+          )}
+
+          {/* Tombol aksi */}
+          <div className="flex gap-3">
+            {result.points < 10 && (
+              <button
+                type="button"
+                onClick={handleRevise}
+                className="flex flex-1 items-center justify-center gap-2 rounded-2xl border-2 border-white/80 bg-white/80 py-3 text-sm font-black uppercase text-[#7a4f2e] shadow-md transition hover:-translate-y-0.5"
+              >
+                <RotateCcw size={15} aria-hidden="true" />
+                Revisi
+              </button>
+            )}
+            <button
+              type="button"
+              onClick={handleNext}
+              className="flex flex-1 items-center justify-center gap-2 rounded-2xl border-4 border-white/80 py-3 text-sm font-black uppercase text-white shadow-xl transition hover:-translate-y-1"
+              style={{ background: `linear-gradient(135deg, ${level.color}, ${level.color}bb)` }}
+            >
+              {isLast ? <><Trophy size={16} /> Lihat Hasil</> : <>Soal Sabanjure <ChevronRight size={16} /></>}
+            </button>
+          </div>
+        </div>
+      )}
+    </div>
+  );
+}
+
 // ── Quiz screen (orchestrator) ───────────────────────────────────────────────
 function QuizScreen({ level, onFinish, onBack }) {
   const [current, setCurrent] = useState(0);
   const [score, setScore] = useState(0);
+  const scoreRef = useRef(0);
+  // Untuk compose: simpan poin per soal
+  const pointsPerQuestion = useRef({});
 
   const q = level.questions[current];
   const isLast = current === level.questions.length - 1;
 
-  const handleCorrect = () => setScore(s => s + 1);
-  const handleWrong = () => {};
-
-  const handleNext = () => {
-    if (isLast) {
-      onFinish(score + (/* will be updated by handleCorrect before */ 0));
-    } else {
-      setCurrent(c => c + 1);
-    }
-    window.scrollTo({ top: 0, behavior: 'smooth' });
-  };
-
-  // Karena score update async, kita track di ref juga
-  const scoreRef = useRef(0);
+  // Dipanggil saat jawaban fill benar
   const handleCorrectWithRef = () => {
     scoreRef.current += 1;
     setScore(scoreRef.current);
+  };
+
+  // Dipanggil saat compose submit — simpan poin terbaik per soal
+  const handleComposeScore = (points) => {
+    const prev = pointsPerQuestion.current[q.id] ?? 0;
+    if (points > prev) {
+      const diff = points - prev;
+      pointsPerQuestion.current[q.id] = points;
+      scoreRef.current += diff;
+      setScore(scoreRef.current);
+    }
   };
 
   const handleNextWithFinish = () => {
@@ -480,7 +769,19 @@ function QuizScreen({ level, onFinish, onBack }) {
           level={level}
           questionNum={current + 1}
           onCorrect={handleCorrectWithRef}
-          onWrong={handleWrong}
+          onWrong={() => {}}
+          onNext={handleNextWithFinish}
+          isLast={isLast}
+        />
+      )}
+
+      {q.type === 'compose' && (
+        <ComposeQuestion
+          key={q.id}
+          q={q}
+          level={level}
+          questionNum={current + 1}
+          onScore={handleComposeScore}
           onNext={handleNextWithFinish}
           isLast={isLast}
         />
@@ -493,7 +794,10 @@ function QuizScreen({ level, onFinish, onBack }) {
 function ResultScreen({ level, score, onRetry, onBack }) {
   const playClick = useClickSound();
   const total = level.questions.length;
-  const pct = Math.round((score / total) * 100);
+  // Tingkat 2 (compose): skor maks = 10 * jumlah soal
+  const isCompose = level.questions[0]?.type === 'compose';
+  const maxScore = isCompose ? total * 10 : total;
+  const pct = maxScore > 0 ? Math.round((score / maxScore) * 100) : 0;
   const starsEarned = pct >= 80 ? 3 : pct >= 50 ? 2 : pct > 0 ? 1 : 0;
 
   const feedback =
@@ -520,9 +824,9 @@ function ResultScreen({ level, score, onRetry, onBack }) {
           className="text-[clamp(3rem,8vw,5rem)] font-black leading-none text-white drop-shadow-2xl"
           style={{ WebkitTextStroke: '4px rgba(0,0,0,0.2)', paintOrder: 'stroke fill' }}
         >
-          {score}<span className="text-[0.5em] text-white/60">/{total}</span>
+          {score}<span className="text-[0.5em] text-white/60">/{maxScore}</span>
         </div>
-        <div className="mt-1 text-lg font-black text-white/80">{pct}% bener</div>
+        <div className="mt-1 text-lg font-black text-white/80">{pct}% {isCompose ? 'skor' : 'bener'}</div>
       </div>
 
       <div className="rounded-2xl border-2 border-white bg-white px-6 py-4 shadow-lg">
