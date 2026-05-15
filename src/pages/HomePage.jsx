@@ -13,6 +13,11 @@ export function HomePage({ menuItems, onChooseMenu, onOpenGuide }) {
   return (
     <div className="mx-auto flex w-full max-w-[1200px] flex-col items-center justify-center gap-10 px-4 sm:gap-12 sm:px-6 lg:gap-14 lg:px-8">
       <header className="grid w-full max-w-4xl justify-items-center text-center">
+        <img
+          src="/assets/logo-icon.png"
+          alt="Logo Javanesia"
+          className="mb-3 h-auto w-[min(170px,42vw)] animate-[fadeInUp_0.65s_ease-out] drop-shadow-[0_10px_22px_rgba(46,29,16,0.22)]"
+        />
         <h1 className="home-title animate-[fadeInUp_0.8s_ease-out] text-[clamp(3.5rem,7vw,5rem)] font-black uppercase leading-none text-white drop-shadow-2xl">
           Javanesia
         </h1>

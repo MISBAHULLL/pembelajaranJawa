@@ -78,15 +78,15 @@ export function SplashScreen({ onDone }) {
             : 'translate-y-0 opacity-100'
         }`}
       >
-        {/* Logo text */}
-        <h1
-          className="text-[clamp(3.5rem,12vw,6rem)] font-black uppercase leading-none text-white"
-          style={{
-            WebkitTextStroke: '6px rgba(120,50,0,0.4)',
-            paintOrder: 'stroke fill',
-            filter: 'drop-shadow(0 6px 24px rgba(0,0,0,0.25))',
-          }}
-        >
+        <div className="grid size-[clamp(8rem,22vw,13rem)] place-items-center rounded-full bg-white/16 p-4 shadow-[0_18px_50px_rgba(46,29,16,0.26)] ring-2 ring-white/30 backdrop-blur-sm">
+          <img
+            src="/assets/logo-icon.png"
+            alt="Logo Javanesia"
+            className="h-full w-full object-contain drop-shadow-[0_8px_18px_rgba(0,0,0,0.22)]"
+          />
+        </div>
+
+        <h1 className="text-[clamp(2.4rem,8vw,4.6rem)] font-black uppercase leading-none text-white drop-shadow-[0_6px_24px_rgba(0,0,0,0.25)]">
           Javanesia
         </h1>
 

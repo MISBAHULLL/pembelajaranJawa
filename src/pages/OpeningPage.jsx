@@ -53,8 +53,15 @@ export function OpeningPage({ onEnter }) {
 
         {/* Logo */}
         <div className="flex flex-col items-center gap-3 animate-[fadeInUp_0.7s_ease-out_both]">
+          <div className="grid size-[clamp(7rem,22vw,11rem)] place-items-center rounded-full bg-white/18 p-3 shadow-[0_14px_40px_rgba(46,29,16,0.24)] ring-2 ring-white/35 backdrop-blur-sm">
+            <img
+              src="/assets/logo-icon.png"
+              alt="Logo Javanesia"
+              className="h-full w-full object-contain drop-shadow-[0_8px_18px_rgba(46,29,16,0.22)]"
+            />
+          </div>
           <h1
-            className="text-[clamp(3.8rem,10vw,6rem)] font-black uppercase leading-none text-white"
+            className="text-[clamp(3rem,8vw,5.2rem)] font-black uppercase leading-none text-white"
             style={{
               WebkitTextStroke: '6px #ff9632',
               paintOrder: 'stroke fill',
