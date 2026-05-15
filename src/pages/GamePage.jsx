@@ -66,6 +66,106 @@ function scoreCompose(text, keyword) {
 
 // ── Fuzzy validation helper ──────────────────────────────────────────────────
 // Normalisasi: lowercase, trim, hapus tanda baca di awal/akhir, spasi ganda
+function getLastWord(line) {
+  return line
+    .toLowerCase()
+    .replace(/[.,!?;:'"]/g, '')
+    .trim()
+    .split(/\s+/)
+    .filter(Boolean)
+    .at(-1) ?? '';
+}
+
+function getRhymeSound(line) {
+  const lastWord = getLastWord(line);
+  const match = lastWord.match(/[aiueo][a-z]*$/);
+  return match ? match[0].slice(-2) : lastWord.slice(-2);
+}
+
+function checkRhyme(lines) {
+  if (lines.length !== 2 && lines.length !== 4) {
+    return { checked: false, pairs: [], allOk: false };
+  }
+
+  const pairs = lines.length === 2
+    ? [[0, 1]]
+    : [[0, 2], [1, 3]];
+
+  const results = pairs.map(([a, b]) => {
+    const first = getRhymeSound(lines[a]);
+    const second = getRhymeSound(lines[b]);
+    return {
+      firstLine: a + 1,
+      secondLine: b + 1,
+      first,
+      second,
+      ok: first && second && first === second,
+    };
+  });
+
+  return {
+    checked: true,
+    pairs: results,
+    allOk: results.every((pair) => pair.ok),
+  };
+}
+
+function buildComposeFeedback(text, keyword, scoring) {
+  const lines = text.split('\n').map(l => l.trim()).filter(Boolean);
+  const rhyme = checkRhyme(lines);
+  const strengths = [];
+  const suggestions = [];
+
+  if (scoring.hasKeyword) {
+    strengths.push(`Kata kunci "${keyword}" wis mlebu, mula parikanmu wis nyambung karo tema.`);
+  } else {
+    suggestions.push(`Lebokna kata kunci "${keyword}" ing salah siji larik supaya tema luwih cetha.`);
+  }
+
+  if (scoring.validLines) {
+    strengths.push(`Jumlah larikmu wis pas: ${scoring.lineCount} larik.`);
+  } else {
+    suggestions.push(`Parikanmu saiki ana ${scoring.lineCount} larik. Coba gawe dadi 2 utawa 4 larik.`);
+  }
+
+  if (scoring.allSyllablesOk) {
+    strengths.push('Cacah suku kata saben larik wis imbang, dadi iramane luwih kepenak diwaca.');
+  } else if (scoring.syllableCounts.length > 0) {
+    scoring.syllableCounts.forEach((count, index) => {
+      if (count < 8) {
+        suggestions.push(`Larik ${index + 1} isih cekak (${count} suku kata). Tambahana tembung supaya tekan 8-12 suku kata.`);
+      } else if (count > 12) {
+        suggestions.push(`Larik ${index + 1} rada dawa (${count} suku kata). Coba cekakna ukarane supaya luwih ringkes.`);
+      }
+    });
+  }
+
+  if (rhyme.checked && rhyme.allOk) {
+    strengths.push('Swara pungkasan larik wis selaras, purwakanthine mulai katon.');
+  } else if (rhyme.checked) {
+    rhyme.pairs
+      .filter((pair) => !pair.ok)
+      .forEach((pair) => {
+        suggestions.push(`Swara pungkasan larik ${pair.firstLine} lan ${pair.secondLine} durung padha. Coba pilih tembung pungkasan sing swarane mirip.`);
+      });
+  } else {
+    suggestions.push('Yen larik wis dadi 2 utawa 4, coba cek maneh swara pungkasan supaya ana purwakanthi.');
+  }
+
+  if (lines.length === 2) {
+    suggestions.push('Elinga: larik kapisan bisa dadi sampiran, larik kapindho dadi isi utawa pesen.');
+  } else if (lines.length === 4) {
+    suggestions.push('Elinga: rong larik wiwitan bisa dadi sampiran, rong larik pungkasan dadi isi.');
+  }
+
+  return {
+    strengths,
+    suggestions: suggestions.length > 0
+      ? suggestions
+      : ['Parikanmu wis apik. Coba gawe tuladha liyane nganggo tema beda supaya luwih trampil.'],
+  };
+}
+
 function normalize(str) {
   return str
     .toLowerCase()
@@ -530,6 +630,7 @@ function FillQuestion({ q, level, questionNum, onCorrect, onWrong, onNext, isLas
 function ComposeQuestion({ q, level, questionNum, onScore, onNext, isLast }) {
   const [text, setText] = useState('');
   const [result, setResult] = useState(null);
+  const [teacherFeedback, setTeacherFeedback] = useState(null);
   const [bestPoints, setBestPoints] = useState(0);
   const [submitted, setSubmitted] = useState(false);
   const [emojiFeedback, setEmojiFeedback] = useState(null);
@@ -541,6 +642,7 @@ function ComposeQuestion({ q, level, questionNum, onScore, onNext, isLast }) {
   useEffect(() => {
     setText('');
     setResult(null);
+    setTeacherFeedback(null);
     setBestPoints(0);
     setSubmitted(false);
     setEmojiFeedback(null);
@@ -553,6 +655,7 @@ function ComposeQuestion({ q, level, questionNum, onScore, onNext, isLast }) {
     }
     const scoring = scoreCompose(text, q.keyword);
     setResult(scoring);
+    setTeacherFeedback(buildComposeFeedback(text, q.keyword, scoring));
     setSubmitted(true);
     setEmojiFeedback(scoring.points === 10 ? 'correct' : scoring.points >= 6 ? 'great' : 'wrong');
     if (scoring.points > bestPoints) {
@@ -574,6 +677,7 @@ function ComposeQuestion({ q, level, questionNum, onScore, onNext, isLast }) {
 
   const handleRevise = () => {
     setResult(null);
+    setTeacherFeedback(null);
     setSubmitted(false);
     setEmojiFeedback(null);
   };
@@ -739,6 +843,32 @@ function ComposeQuestion({ q, level, questionNum, onScore, onNext, isLast }) {
               )}
             </div>
           </div>
+
+          {teacherFeedback && (
+            <div className="rounded-2xl border-2 border-emerald-200 bg-emerald-50 p-4 shadow-sm">
+              <p className="mb-3 text-xs font-black uppercase tracking-widest text-emerald-700">Saran Guru:</p>
+
+              {teacherFeedback.strengths.length > 0 && (
+                <div className="mb-3 grid gap-2">
+                  {teacherFeedback.strengths.map((message) => (
+                    <div key={message} className="flex items-start gap-2 rounded-xl bg-white/80 px-3 py-2 text-sm font-bold leading-relaxed text-emerald-800">
+                      <CheckCircle2 size={15} className="mt-0.5 shrink-0" aria-hidden="true" />
+                      <span>{message}</span>
+                    </div>
+                  ))}
+                </div>
+              )}
+
+              <div className="grid gap-2">
+                {teacherFeedback.suggestions.map((message) => (
+                  <div key={message} className="flex items-start gap-2 rounded-xl bg-amber-50 px-3 py-2 text-sm font-bold leading-relaxed text-amber-800 ring-1 ring-amber-200">
+                    <AlertCircle size={15} className="mt-0.5 shrink-0" aria-hidden="true" />
+                    <span>{message}</span>
+                  </div>
+                ))}
+              </div>
+            </div>
+          )}
 
           {/* Skor terbaik */}
           {bestPoints > result.points && (
