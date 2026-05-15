@@ -3,6 +3,7 @@ import { Star, Trophy, RotateCcw, ChevronRight, CheckCircle2, XCircle, Sparkles,
 import { gameLevels } from '../data/gameParikan.js';
 import { useClickSound } from '../hooks/useClickSound.js';
 import { useFeedbackSound } from '../hooks/useFeedbackSound.js';
+import { useResultSound } from '../hooks/useResultSound.js';
 import { useLocalStorage } from '../hooks/useLocalStorage.js';
 
 // ── Suku kata counter ────────────────────────────────────────────────────────
@@ -797,6 +798,7 @@ function QuizScreen({ level, onFinish, onBack }) {
 // ── Result screen ────────────────────────────────────────────────────────────
 function ResultScreen({ level, score, onRetry, onBack }) {
   const playClick = useClickSound();
+  const { playApplause, playEncourage, playFailed } = useResultSound();
   const total = level.questions.length;
   // Tingkat 2 (compose): skor maks = 10 * jumlah soal
   const isCompose = level.questions[0]?.type === 'compose';
@@ -809,6 +811,22 @@ function ResultScreen({ level, score, onRetry, onBack }) {
     pct >= 80   ? { msg: 'Apik banget! 🌟', sub: 'Meh sampurna, terusna sinau!' } :
     pct >= 50   ? { msg: 'Lumayan! 👍', sub: 'Isih ana sing kudu dilatih maneh.' } :
                   { msg: 'Ayo coba maneh! 💪', sub: 'Sinau maneh banjur coba maneh ya!' };
+
+  const resultFeedback = pct === 100
+    ? feedback
+    : pct >= 70
+    ? { msg: 'Ayo semangat, coba lagi!', sub: 'Nilaimu wis lumayan, nanging isih bisa luwih apik.' }
+    : { msg: 'Kamu gagal, coba lagi!', sub: 'Sinau maneh banjur coba saka awal.' };
+
+  useEffect(() => {
+    if (pct === 100) {
+      playApplause();
+    } else if (pct >= 70) {
+      playEncourage();
+    } else {
+      playFailed();
+    }
+  }, [pct]);
 
   return (
     <div className="mx-auto flex w-full max-w-[600px] flex-col items-center gap-6 px-4 py-2 text-center">
@@ -834,8 +852,8 @@ function ResultScreen({ level, score, onRetry, onBack }) {
       </div>
 
       <div className="rounded-2xl border-2 border-white bg-white px-6 py-4 shadow-lg">
-        <p className="text-xl font-black text-[#2e1d10]">{feedback.msg}</p>
-        <p className="mt-1 text-sm font-semibold text-gray-600">{feedback.sub}</p>
+        <p className="text-xl font-black text-[#2e1d10]">{resultFeedback.msg}</p>
+        <p className="mt-1 text-sm font-semibold text-gray-600">{resultFeedback.sub}</p>
       </div>
 
       {pct >= 80 && (
