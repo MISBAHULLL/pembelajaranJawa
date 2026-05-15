@@ -78,6 +78,30 @@ function detectIssue(userInput) {
 }
 
 // ── Star rating display ──────────────────────────────────────────────────────
+function FeedbackEmoji({ type }) {
+  if (!type) return null;
+
+  const variants = {
+    correct: { emoji: '😄', label: 'Bener!', className: 'border-green-300 bg-green-50 text-green-700' },
+    wrong: { emoji: '😢', label: 'Salah!', className: 'border-red-300 bg-red-50 text-red-600' },
+    great: { emoji: '🤩', label: 'Apik!', className: 'border-yellow-300 bg-yellow-50 text-yellow-700' },
+  };
+  const item = variants[type] ?? variants.wrong;
+
+  return (
+    <div className="pointer-events-none fixed inset-0 z-50 flex items-center justify-between overflow-hidden px-0 sm:px-4">
+      <div className={`animate-[feedbackSlideLeft_1.45s_ease-out_both] rounded-r-[2rem] border-y-4 border-r-4 px-5 py-5 text-center shadow-[0_22px_60px_rgba(46,29,16,0.28)] sm:rounded-[2rem] sm:border-4 sm:px-7 ${item.className}`}>
+        <div className="text-6xl leading-none drop-shadow-sm sm:text-7xl" aria-hidden="true">{item.emoji}</div>
+        <p className="mt-2 text-xl font-black uppercase tracking-wide sm:text-2xl">{item.label}</p>
+      </div>
+      <div className={`animate-[feedbackSlideRight_1.45s_ease-out_both] rounded-l-[2rem] border-y-4 border-l-4 px-5 py-5 text-center shadow-[0_22px_60px_rgba(46,29,16,0.28)] sm:rounded-[2rem] sm:border-4 sm:px-7 ${item.className}`}>
+        <div className="text-6xl leading-none drop-shadow-sm sm:text-7xl" aria-hidden="true">{item.emoji}</div>
+        <p className="mt-2 text-xl font-black uppercase tracking-wide sm:text-2xl">{item.label}</p>
+      </div>
+    </div>
+  );
+}
+
 function StarRating({ count, filled = 0, size = 20 }) {
   return (
     <span className="inline-flex gap-0.5">
@@ -280,6 +304,7 @@ function QuizTopBar({ level, current, total, score, onBack }) {
 function FillQuestion({ q, level, questionNum, onCorrect, onWrong, onNext, isLast }) {
   const [input, setInput] = useState('');
   const [status, setStatus] = useState('idle'); // 'idle' | 'correct' | 'wrong'
+  const [emojiFeedback, setEmojiFeedback] = useState(null);
   const [warning, setWarning] = useState('');
   const [showExplanation, setShowExplanation] = useState(false);
   const inputRef = useRef(null);
@@ -291,6 +316,7 @@ function FillQuestion({ q, level, questionNum, onCorrect, onWrong, onNext, isLas
     // Reset state saat soal berganti
     setInput('');
     setStatus('idle');
+    setEmojiFeedback(null);
     setWarning('');
     setShowExplanation(false);
     setTimeout(() => inputRef.current?.focus(), 100);
@@ -316,11 +342,13 @@ function FillQuestion({ q, level, questionNum, onCorrect, onWrong, onNext, isLas
 
     if (isCorrect) {
       setStatus('correct');
+      setEmojiFeedback('correct');
       setShowExplanation(true);
       playCorrect();
       onCorrect();
     } else {
       setStatus('wrong');
+      setEmojiFeedback('wrong');
       setShowExplanation(true);
       playWrong();
       onWrong();
@@ -381,6 +409,7 @@ function FillQuestion({ q, level, questionNum, onCorrect, onWrong, onNext, isLas
 
   return (
     <div className="flex flex-col gap-4">
+      <FeedbackEmoji type={emojiFeedback} />
       {/* Question card */}
       <div
         className="relative overflow-hidden rounded-3xl shadow-2xl"
@@ -491,6 +520,7 @@ function ComposeQuestion({ q, level, questionNum, onScore, onNext, isLast }) {
   const [result, setResult] = useState(null);
   const [bestPoints, setBestPoints] = useState(0);
   const [submitted, setSubmitted] = useState(false);
+  const [emojiFeedback, setEmojiFeedback] = useState(null);
   const { playCorrect, playWrong } = useFeedbackSound();
   const playClick = useClickSound();
   const feedbackRef = useRef(null);
@@ -500,6 +530,7 @@ function ComposeQuestion({ q, level, questionNum, onScore, onNext, isLast }) {
     setResult(null);
     setBestPoints(0);
     setSubmitted(false);
+    setEmojiFeedback(null);
   }, [q.id]);
 
   const handleSubmit = () => {
@@ -510,6 +541,7 @@ function ComposeQuestion({ q, level, questionNum, onScore, onNext, isLast }) {
     const scoring = scoreCompose(text, q.keyword);
     setResult(scoring);
     setSubmitted(true);
+    setEmojiFeedback(scoring.points === 10 ? 'correct' : scoring.points >= 6 ? 'great' : 'wrong');
     if (scoring.points > bestPoints) {
       setBestPoints(scoring.points);
       onScore(scoring.points);
@@ -523,6 +555,7 @@ function ComposeQuestion({ q, level, questionNum, onScore, onNext, isLast }) {
   const handleRevise = () => {
     setResult(null);
     setSubmitted(false);
+    setEmojiFeedback(null);
   };
 
   const handleNext = () => { playClick(); onNext(); };
@@ -531,6 +564,7 @@ function ComposeQuestion({ q, level, questionNum, onScore, onNext, isLast }) {
 
   return (
     <div className="flex flex-col gap-4">
+      <FeedbackEmoji type={emojiFeedback} />
       {/* Soal card */}
       <div
         className="relative overflow-hidden rounded-3xl shadow-2xl"

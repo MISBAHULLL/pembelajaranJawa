@@ -288,6 +288,72 @@ button {
   50%       { transform: translateY(-6px); opacity: 1;   }
 }
 
+@keyframes feedbackPop {
+  0% {
+    opacity: 0;
+    transform: translateY(18px) scale(0.45) rotate(-5deg);
+  }
+  18% {
+    opacity: 1;
+    transform: translateY(0) scale(1.12) rotate(2deg);
+  }
+  34% {
+    transform: scale(0.96) rotate(-1deg);
+  }
+  52% {
+    opacity: 1;
+    transform: scale(1) rotate(0);
+  }
+  100% {
+    opacity: 0;
+    transform: translateY(-22px) scale(0.92);
+  }
+}
+
+@keyframes feedbackSlideLeft {
+  0% {
+    opacity: 0;
+    transform: translateX(-115%) scale(0.8) rotate(-8deg);
+  }
+  22% {
+    opacity: 1;
+    transform: translateX(0) scale(1.08) rotate(2deg);
+  }
+  42% {
+    transform: translateX(0) scale(1) rotate(0);
+  }
+  76% {
+    opacity: 1;
+    transform: translateX(0) scale(1);
+  }
+  100% {
+    opacity: 0;
+    transform: translateX(-115%) scale(0.92) rotate(-4deg);
+  }
+}
+
+@keyframes feedbackSlideRight {
+  0% {
+    opacity: 0;
+    transform: translateX(115%) scale(0.8) rotate(8deg);
+  }
+  22% {
+    opacity: 1;
+    transform: translateX(0) scale(1.08) rotate(-2deg);
+  }
+  42% {
+    transform: translateX(0) scale(1) rotate(0);
+  }
+  76% {
+    opacity: 1;
+    transform: translateX(0) scale(1);
+  }
+  100% {
+    opacity: 0;
+    transform: translateX(115%) scale(0.92) rotate(4deg);
+  }
+}
+
 @media (prefers-reduced-motion: reduce) {
   *,
   *::before,
