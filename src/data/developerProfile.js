@@ -1,20 +1,20 @@
 export const developerProfile = {
   student: {
-    name: 'Nama Mahasiswa',
+    name: 'Nashwa Namiralya Faza',
     role: 'Mahasiswa Pengembang Media Pembelajaran',
-    photo: '/assets/profile/mahasiswa.jpg',
+    photo: '/assets/profile/mahasiswa.jpeg',
     details: [
-      'Program Studi: Pendidikan Bahasa Jawa',
-      'NIM: isi NIM mahasiswa',
-      'Perguruan Tinggi: isi nama kampus',
+      'Program Studi: S1 - Pendidikan Bahasa dan Sastra Jawa',
+      'NIM: 23020114009',
+      'Perguruan Tinggi: Universitas Negeri Surabaya',
     ],
   },
   supervisor: {
-    name: 'Nama Dosen Pembimbing',
+    name: 'Dr. Octo Dendy Andriyanto, S.Pd., M.Pd.',
     role: 'Dosen Pembimbing',
-    photo: '/assets/profile/dosen-pembimbing.jpg',
+    photo: '/assets/profile/dosen-pembimbing.jpeg',
     details: [
-      'NIDN/NIP: isi identitas dosen',
+      'NIP/NIDN: 198907262015041002 / 0026078901',
       'Bidang: Pembelajaran Bahasa Jawa',
       'Membimbing pengembangan materi dan kelayakan media.',
     ],
