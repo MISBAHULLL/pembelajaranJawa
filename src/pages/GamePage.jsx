@@ -4,6 +4,7 @@ import { gameLevels } from '../data/gameParikan.js';
 import { useClickSound } from '../hooks/useClickSound.js';
 import { useFeedbackSound } from '../hooks/useFeedbackSound.js';
 import { useResultSound } from '../hooks/useResultSound.js';
+import { useAnswerCrowdSound } from '../hooks/useAnswerCrowdSound.js';
 import { useLocalStorage } from '../hooks/useLocalStorage.js';
 
 // ── Suku kata counter ────────────────────────────────────────────────────────
@@ -310,6 +311,7 @@ function FillQuestion({ q, level, questionNum, onCorrect, onWrong, onNext, isLas
   const inputRef = useRef(null);
   const feedbackRef = useRef(null);
   const { playCorrect, playWrong } = useFeedbackSound();
+  const { playCorrectCrowd, playWrongCrowd } = useAnswerCrowdSound();
   const playClick = useClickSound();
 
   useEffect(() => {
@@ -344,12 +346,14 @@ function FillQuestion({ q, level, questionNum, onCorrect, onWrong, onNext, isLas
       setStatus('correct');
       setEmojiFeedback('correct');
       setShowExplanation(true);
-      playCorrect();
+      playCorrectCrowd();
+      window.setTimeout(playCorrect, 450);
       onCorrect();
     } else {
       setStatus('wrong');
       setEmojiFeedback('wrong');
       setShowExplanation(true);
+      playWrongCrowd();
       playWrong();
       onWrong();
     }
@@ -522,6 +526,7 @@ function ComposeQuestion({ q, level, questionNum, onScore, onNext, isLast }) {
   const [submitted, setSubmitted] = useState(false);
   const [emojiFeedback, setEmojiFeedback] = useState(null);
   const { playCorrect, playWrong } = useFeedbackSound();
+  const { playCorrectCrowd, playWrongCrowd } = useAnswerCrowdSound();
   const playClick = useClickSound();
   const feedbackRef = useRef(null);
 
@@ -546,9 +551,16 @@ function ComposeQuestion({ q, level, questionNum, onScore, onNext, isLast }) {
       setBestPoints(scoring.points);
       onScore(scoring.points);
     }
-    if (scoring.points === 10) playCorrect();
-    else if (scoring.points >= 6) playClick();
-    else playWrong();
+    if (scoring.points === 10) {
+      playCorrectCrowd();
+      window.setTimeout(playCorrect, 450);
+    } else if (scoring.points >= 6) {
+      playCorrectCrowd();
+      playClick();
+    } else {
+      playWrongCrowd();
+      playWrong();
+    }
     setTimeout(() => feedbackRef.current?.scrollIntoView({ behavior: 'smooth', block: 'nearest' }), 100);
   };
 

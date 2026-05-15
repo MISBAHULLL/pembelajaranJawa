@@ -47,12 +47,14 @@ function playGoogleVoice(text) {
 }
 
 function createAudioContext() {
-  return new (window.AudioContext || window.webkitAudioContext)();
+  const ctx = new (window.AudioContext || window.webkitAudioContext)();
+  ctx.resume?.();
+  return ctx;
 }
 
 function playClapBurst(ctx, delay) {
   const startAt = ctx.currentTime + delay;
-  const bufferSize = ctx.sampleRate * 0.14;
+  const bufferSize = Math.floor(ctx.sampleRate * 0.14);
   const buffer = ctx.createBuffer(1, bufferSize, ctx.sampleRate);
   const data = buffer.getChannelData(0);
 
@@ -74,7 +76,7 @@ function playClapBurst(ctx, delay) {
   gainNode.connect(ctx.destination);
 
   gainNode.gain.setValueAtTime(0.001, startAt);
-  gainNode.gain.exponentialRampToValueAtTime(0.45, startAt + 0.01);
+  gainNode.gain.exponentialRampToValueAtTime(0.62, startAt + 0.01);
   gainNode.gain.exponentialRampToValueAtTime(0.001, startAt + 0.14);
 
   source.start(startAt);
