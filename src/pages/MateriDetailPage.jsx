@@ -1,24 +1,22 @@
 import React, { useState, useEffect, useRef } from 'react';
 import { ChevronLeft, ChevronRight, Volume2, Square, BookOpen, LoaderCircle } from 'lucide-react';
 import { useClickSound } from '../hooks/useClickSound.js';
-import { playNaturalJavaneseSpeech, prepareNaturalJavaneseSpeech } from '../hooks/useNaturalJavaneseSpeech.js';
-import { getMateriNarrationText, materiNarrationTtsOptions } from '../utils/materiSpeech.js';
+import { playAudioFile } from '../hooks/useAudioFile.js';
 
 export function MateriDetailPage({ item, index, total, onNext, onPrev, hasNext, hasPrev, onBackToList }) {
   const [isPlaying, setIsPlaying] = useState(false);
   const [isPreparingAudio, setIsPreparingAudio] = useState(false);
+  const [audioMessage, setAudioMessage] = useState('');
   const [touchStart, setTouchStart] = useState(null);
   const [touchEnd, setTouchEnd] = useState(null);
   const narrationRef = useRef(null);
   const playClick = useClickSound();
 
   const lines = item.example ? item.example.split('\n') : [];
-  const narrationText = getMateriNarrationText(item);
 
   const stopNarration = () => {
     narrationRef.current?.stop();
     narrationRef.current = null;
-    window.speechSynthesis?.cancel();
     setIsPlaying(false);
     setIsPreparingAudio(false);
   };
@@ -26,7 +24,7 @@ export function MateriDetailPage({ item, index, total, onNext, onPrev, hasNext, 
   // Stop narration when item changes
   useEffect(() => {
     stopNarration();
-    prepareNaturalJavaneseSpeech(narrationText, { ttsOptions: materiNarrationTtsOptions });
+    setAudioMessage('');
   }, [item]);
 
   // Cleanup on unmount
@@ -39,8 +37,9 @@ export function MateriDetailPage({ item, index, total, onNext, onPrev, hasNext, 
     if (isPlaying || isPreparingAudio) {
       stopNarration();
     } else {
-      narrationRef.current = playNaturalJavaneseSpeech(narrationText, {
-        onLoading: () => setIsPreparingAudio(true),
+      setAudioMessage('');
+      narrationRef.current = playAudioFile(item.audioSrc, {
+        onLoadStart: () => setIsPreparingAudio(true),
         onStart: () => {
           setIsPreparingAudio(false);
           setIsPlaying(true);
@@ -52,8 +51,8 @@ export function MateriDetailPage({ item, index, total, onNext, onPrev, hasNext, 
         onError: () => {
           setIsPreparingAudio(false);
           setIsPlaying(false);
+          setAudioMessage('Audio materi belum tersedia. Tambahkan file MP3 sesuai audioSrc di folder public/assets/sounds.');
         },
-        ttsOptions: materiNarrationTtsOptions,
       });
     }
   };
@@ -182,6 +181,12 @@ export function MateriDetailPage({ item, index, total, onNext, onPrev, hasNext, 
               {item.body}
             </p>
           </div>
+
+          {audioMessage && (
+            <p className="mt-3 rounded-xl border border-amber-200 bg-amber-50 px-4 py-2 text-sm font-bold text-amber-700">
+              {audioMessage}
+            </p>
+          )}
 
           {/* Example block */}
           {lines.length > 0 && (

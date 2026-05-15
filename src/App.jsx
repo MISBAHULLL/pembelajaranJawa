@@ -1,4 +1,4 @@
-import React, { useEffect, useState } from 'react';
+import React, { useState } from 'react';
 import { mainMenu } from './data/mainMenu.js';
 import { materiList } from './data/materi.js';
 import { videoList } from './data/videos.js';
@@ -16,8 +16,6 @@ import { VideoPage } from './pages/VideoPage.jsx';
 import { GamePage } from './pages/GamePage.jsx';
 import { AboutPage } from './pages/AboutPage.jsx';
 import { GuidePage } from './pages/GuidePage.jsx';
-import { preloadPuterSpeech, prepareNaturalJavaneseSpeech } from './hooks/useNaturalJavaneseSpeech.js';
-import { getMateriNarrationText, materiNarrationTtsOptions } from './utils/materiSpeech.js';
 
 // Cek apakah splash sudah ditampilkan di sesi ini
 const hasSeenSplash = () => {
@@ -39,25 +37,6 @@ export default function App() {
   const [showSplash, setShowSplash] = useState(() => !hasSeenSplash());
   // Opening tampil setelah splash, sebelum home
   const [showOpening, setShowOpening] = useState(true);
-
-  useEffect(() => {
-    preloadPuterSpeech();
-  }, []);
-
-  useEffect(() => {
-    if (showSplash || showOpening) return undefined;
-
-    const timers = materiList.map((materi, index) => (
-      window.setTimeout(() => {
-        prepareNaturalJavaneseSpeech(getMateriNarrationText(materi), {
-          ttsOptions: materiNarrationTtsOptions,
-          firstChunkOnly: true,
-        });
-      }, 900 + index * 650)
-    ));
-
-    return () => timers.forEach((timer) => window.clearTimeout(timer));
-  }, [showSplash, showOpening]);
 
   const handleSplashDone = () => {
     markSplashSeen();

@@ -12,6 +12,34 @@ function getInitials(name) {
     .toUpperCase();
 }
 
+function ProfilePhoto({ person, accent, className = '' }) {
+  const [hasError, setHasError] = useState(false);
+
+  useEffect(() => {
+    setHasError(false);
+  }, [person.photo]);
+
+  if (!person.photo || hasError) {
+    return (
+      <div
+        className={`grid h-full w-full place-items-center font-black text-white ${className}`}
+        style={{ background: accent }}
+      >
+        {getInitials(person.name)}
+      </div>
+    );
+  }
+
+  return (
+    <img
+      src={person.photo}
+      alt={`Foto ${person.name}`}
+      className={`h-full w-full object-cover object-top ${className}`}
+      onError={() => setHasError(true)}
+    />
+  );
+}
+
 function ProfileCard({ icon: Icon, label, person, accent = '#ff9b2f', onOpen }) {
   const isInteractive = Boolean(onOpen);
   const Shell = isInteractive ? 'button' : 'article';
@@ -34,23 +62,7 @@ function ProfileCard({ icon: Icon, label, person, accent = '#ff9b2f', onOpen }) 
       <div className="flex flex-col gap-4 sm:flex-row sm:items-start">
         <div className="relative shrink-0">
           <div className="size-24 overflow-hidden rounded-2xl border-4 border-white bg-orange-100 shadow-lg">
-            {person.photo ? (
-              <img
-                src={person.photo}
-                alt={`Foto ${person.name}`}
-                className="h-full w-full object-cover object-top"
-                onError={(event) => {
-                  event.currentTarget.style.display = 'none';
-                  event.currentTarget.nextElementSibling?.classList.remove('hidden');
-                }}
-              />
-            ) : null}
-            <div
-              className={`grid h-full w-full place-items-center text-2xl font-black text-white ${person.photo ? 'hidden' : ''}`}
-              style={{ background: accent }}
-            >
-              {getInitials(person.name)}
-            </div>
+            <ProfilePhoto person={person} accent={accent} className="text-2xl" />
           </div>
           <div
             className="absolute -bottom-2 -right-2 grid size-9 place-items-center rounded-xl border-2 border-white text-white shadow-md"
@@ -124,17 +136,7 @@ function ProfileModal({ icon: Icon, label, person, accent, onClose }) {
           </button>
 
           <div className="relative w-full max-w-[280px] overflow-hidden rounded-3xl border-4 border-white bg-white shadow-2xl">
-            {person.photo ? (
-              <img
-                src={person.photo}
-                alt={`Foto ${person.name}`}
-                className="max-h-[430px] w-full object-contain"
-              />
-            ) : (
-              <div className="grid aspect-[3/4] place-items-center text-5xl font-black text-white" style={{ background: accent }}>
-                {getInitials(person.name)}
-              </div>
-            )}
+            <ProfilePhoto person={person} accent={accent} className="max-h-[430px] min-h-[320px] object-contain text-5xl" />
           </div>
         </div>
 

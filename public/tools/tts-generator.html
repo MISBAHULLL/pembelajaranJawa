@@ -1,0 +1,242 @@
+<!doctype html>
+<html lang="id">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Javanesia TTS Generator</title>
+    <script src="https://js.puter.com/v2/"></script>
+    <style>
+      :root {
+        color: #2e1d10;
+        font-family: Inter, "Segoe UI", Arial, sans-serif;
+        background: #f7ead7;
+      }
+
+      * {
+        box-sizing: border-box;
+      }
+
+      body {
+        margin: 0;
+        min-width: 320px;
+        min-height: 100vh;
+        padding: 28px;
+      }
+
+      main {
+        max-width: 920px;
+        margin: 0 auto;
+        display: grid;
+        gap: 18px;
+      }
+
+      section {
+        border: 3px solid rgba(255, 255, 255, 0.9);
+        border-radius: 16px;
+        background: rgba(255, 255, 255, 0.92);
+        box-shadow: 0 14px 32px rgba(78, 45, 21, 0.14);
+        padding: 20px;
+      }
+
+      h1 {
+        margin: 0;
+        font-size: clamp(2rem, 5vw, 3.2rem);
+        line-height: 1;
+        color: #3d2817;
+      }
+
+      p {
+        margin: 8px 0 0;
+        font-weight: 700;
+        line-height: 1.6;
+        color: #6b4a2d;
+      }
+
+      label {
+        display: grid;
+        gap: 8px;
+        font-size: 0.78rem;
+        font-weight: 900;
+        letter-spacing: 0.12em;
+        text-transform: uppercase;
+        color: #d97706;
+      }
+
+      textarea,
+      input,
+      select {
+        width: 100%;
+        border: 2px solid #fed7aa;
+        border-radius: 12px;
+        padding: 12px 14px;
+        color: #2e1d10;
+        font: inherit;
+        font-weight: 700;
+        outline: none;
+      }
+
+      textarea {
+        min-height: 180px;
+        resize: vertical;
+      }
+
+      button,
+      a.download {
+        display: inline-flex;
+        align-items: center;
+        justify-content: center;
+        border: 0;
+        border-radius: 12px;
+        background: #ff9700;
+        color: white;
+        cursor: pointer;
+        font: inherit;
+        font-weight: 900;
+        padding: 12px 18px;
+        text-decoration: none;
+        box-shadow: 0 5px 0 rgba(95, 60, 31, 0.2);
+      }
+
+      button:disabled {
+        cursor: wait;
+        opacity: 0.6;
+      }
+
+      .grid {
+        display: grid;
+        gap: 14px;
+      }
+
+      .row {
+        display: grid;
+        grid-template-columns: repeat(2, minmax(0, 1fr));
+        gap: 14px;
+      }
+
+      .actions {
+        display: flex;
+        flex-wrap: wrap;
+        gap: 12px;
+      }
+
+      .status {
+        min-height: 24px;
+        font-weight: 800;
+        color: #7a5030;
+      }
+
+      audio {
+        width: 100%;
+      }
+
+      @media (max-width: 720px) {
+        body {
+          padding: 16px;
+        }
+
+        .row {
+          grid-template-columns: 1fr;
+        }
+      }
+    </style>
+  </head>
+  <body>
+    <main>
+      <section>
+        <h1>Javanesia TTS Generator</h1>
+        <p>
+          Tool iki mung kanggo developer. Gunakake kanggo nggawe audio MP3, banjur simpen file menyang
+          <strong>public/assets/sounds</strong>. Aplikasi siswa ora perlu mbukak tool iki.
+        </p>
+      </section>
+
+      <section class="grid">
+        <div class="row">
+          <label>
+            Nama file
+            <input id="filename" value="materi-01-tegese-parikan.mp3" />
+          </label>
+          <label>
+            Voice
+            <select id="voice">
+              <option value="Kore">Kore</option>
+              <option value="Leda">Leda</option>
+              <option value="Aoede">Aoede</option>
+              <option value="Puck">Puck</option>
+              <option value="Zephyr">Zephyr</option>
+            </select>
+          </label>
+        </div>
+
+        <label>
+          Teks audio
+          <textarea id="text">Tegese Parikan. Parikan yaiku unen-unen Jawa kang nduweni purwakanthi, biasane dumadi saka sampiran lan isi.</textarea>
+        </label>
+
+        <label>
+          Instruksi suara
+          <textarea id="instructions">Read aloud in Javanese for Indonesian junior high school students. Use a warm teacher voice with natural Indonesian-Javanese pronunciation. Do not translate the text. Avoid an English accent. Pronounce dh, th, ng, ny, and final vowels clearly.</textarea>
+        </label>
+
+        <div class="actions">
+          <button id="generate" type="button">Generate Audio</button>
+          <a id="download" class="download" hidden>Download MP3</a>
+        </div>
+
+        <div id="status" class="status"></div>
+        <audio id="preview" controls hidden></audio>
+      </section>
+    </main>
+
+    <script>
+      const generateButton = document.getElementById('generate');
+      const downloadLink = document.getElementById('download');
+      const preview = document.getElementById('preview');
+      const statusEl = document.getElementById('status');
+
+      function normalizeFilename(name) {
+        const fallback = 'audio-javanesia.mp3';
+        const cleaned = name.trim() || fallback;
+        return cleaned.toLowerCase().endsWith('.mp3') ? cleaned : `${cleaned}.mp3`;
+      }
+
+      generateButton.addEventListener('click', async () => {
+        const text = document.getElementById('text').value.trim();
+        const voice = document.getElementById('voice').value;
+        const instructions = document.getElementById('instructions').value.trim();
+        const filename = normalizeFilename(document.getElementById('filename').value);
+
+        if (!text) {
+          statusEl.textContent = 'Teks audio durung diisi.';
+          return;
+        }
+
+        generateButton.disabled = true;
+        downloadLink.hidden = true;
+        preview.hidden = true;
+        statusEl.textContent = 'Nyiyapake audio saka Puter/Gemini...';
+
+        try {
+          const audio = await puter.ai.txt2speech(text, {
+            provider: 'gemini',
+            model: 'gemini-2.5-flash-preview-tts',
+            voice,
+            instructions,
+          });
+
+          preview.src = audio.src;
+          preview.hidden = false;
+          downloadLink.href = audio.src;
+          downloadLink.download = filename;
+          downloadLink.hidden = false;
+          statusEl.textContent = `Audio siap. Download banjur simpen minangka public/assets/sounds/${filename}`;
+        } catch (error) {
+          statusEl.textContent = `Gagal nggawe audio: ${error?.message ?? error}`;
+        } finally {
+          generateButton.disabled = false;
+        }
+      });
+    </script>
+  </body>
+</html>
+

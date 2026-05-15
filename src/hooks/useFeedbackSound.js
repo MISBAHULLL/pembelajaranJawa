@@ -1,17 +1,8 @@
-import { useEffect } from 'react';
-import { playNaturalJavaneseSpeech, prepareNaturalJavaneseSpeech } from './useNaturalJavaneseSpeech.js';
+import { playAudioFile } from './useAudioFile.js';
 
-const CORRECT_TEXT = 'Bener. Jawabanmu wis trep.';
-const WRONG_TEXT = 'Durung trep. Ayo dicoba maneh.';
-const CORRECT_TTS_OPTIONS = {
-  voice: 'Leda',
-  instructions:
-    'Say this as short cheerful Javanese quiz feedback for an SMP student. Keep it natural, not dramatic.',
-};
-const WRONG_TTS_OPTIONS = {
-  voice: 'Kore',
-  instructions:
-    'Say this as gentle Javanese quiz feedback for an SMP student. Keep it supportive and clear.',
+const FEEDBACK_AUDIO = {
+  correct: '/assets/sounds/feedback-benar.mp3',
+  wrong: '/assets/sounds/feedback-salah.mp3',
 };
 
 function speakFeedback(text) {
@@ -44,21 +35,14 @@ function speakFeedback(text) {
 }
 
 export function useFeedbackSound() {
-  useEffect(() => {
-    prepareNaturalJavaneseSpeech(CORRECT_TEXT, { ttsOptions: CORRECT_TTS_OPTIONS });
-    prepareNaturalJavaneseSpeech(WRONG_TEXT, { ttsOptions: WRONG_TTS_OPTIONS });
-  }, []);
-
   const playCorrect = () => {
-    playNaturalJavaneseSpeech(CORRECT_TEXT, {
-      ttsOptions: CORRECT_TTS_OPTIONS,
+    playAudioFile(FEEDBACK_AUDIO.correct, {
       onError: () => speakFeedback('Bener'),
     });
   };
 
   const playWrong = () => {
-    playNaturalJavaneseSpeech(WRONG_TEXT, {
-      ttsOptions: WRONG_TTS_OPTIONS,
+    playAudioFile(FEEDBACK_AUDIO.wrong, {
       onError: () => speakFeedback('Salah'),
     });
   };

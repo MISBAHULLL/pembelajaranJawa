@@ -1,4 +1,10 @@
-import { playNaturalJavaneseSpeech, prepareNaturalJavaneseSpeech } from './useNaturalJavaneseSpeech.js';
+import { playAudioFile } from './useAudioFile.js';
+
+const RESULT_AUDIO = {
+  perfect: '/assets/sounds/result-sampurna.mp3',
+  success: '/assets/sounds/result-lulus.mp3',
+  retry: '/assets/sounds/result-lulus.mp3',
+};
 
 function speakFallback(text) {
   try {
@@ -25,40 +31,15 @@ function speakFallback(text) {
   }
 }
 
-function playResultVoice(text, { voice = 'Kore', instructions = '' } = {}) {
-  const ttsOptions = {
-    voice,
-    instructions: [
-      'This is quiz result feedback for an Indonesian junior high school student learning Bahasa Jawa.',
-      'Use a warm, encouraging Javanese teacher voice.',
-      'Keep the pronunciation natural for Javanese and Indonesian words.',
-      instructions,
-    ].filter(Boolean).join(' '),
-  };
-
-  playNaturalJavaneseSpeech(text, {
-    ttsOptions,
-    onError: () => speakFallback(text),
+function playResultVoice(src, fallbackText) {
+  playAudioFile(src, {
+    onError: () => speakFallback(fallbackText),
   });
 }
 
-function scheduleResultVoice(text, delay, options) {
-  const ttsOptions = {
-    voice: options?.voice ?? 'Kore',
-    instructions: [
-      'This is quiz result feedback for an Indonesian junior high school student learning Bahasa Jawa.',
-      'Use a warm, encouraging Javanese teacher voice.',
-      'Keep the pronunciation natural for Javanese and Indonesian words.',
-      options?.instructions,
-    ].filter(Boolean).join(' '),
-  };
-
-  prepareNaturalJavaneseSpeech(text, { ttsOptions });
+function scheduleResultVoice(src, fallbackText, delay) {
   window.setTimeout(() => {
-    playResultVoice(text, {
-      voice: ttsOptions.voice,
-      instructions: options?.instructions,
-    });
+    playResultVoice(src, fallbackText);
   }, delay);
 }
 
@@ -229,12 +210,9 @@ export function useResultSound() {
     playApplauseSound();
     playSuccessMusic();
     scheduleResultVoice(
+      RESULT_AUDIO.perfect,
       'Sampurna. Apik banget, kowe wis pinter nyinaoni parikan.',
       1250,
-      {
-        voice: 'Leda',
-        instructions: 'Sound proud and happy, but still calm like a teacher in class.',
-      },
     );
   };
 
@@ -242,12 +220,9 @@ export function useResultSound() {
   const playEncourage = () => {
     playSuccessMusic();
     scheduleResultVoice(
+      RESULT_AUDIO.success,
       'Apik. Nilaimu wis lumayan. Terus latihan supaya parikanmu luwih runtut.',
       1800,
-      {
-        voice: 'Kore',
-        instructions: 'Sound encouraging and clear, with a relaxed pace.',
-      },
     );
   };
 
@@ -255,12 +230,9 @@ export function useResultSound() {
   const playFailed = () => {
     playEncourageMusic();
     scheduleResultVoice(
+      RESULT_AUDIO.retry,
       'Aja kuwatir. Ayo sinau maneh, banjur coba sepisan maneh.',
       1800,
-      {
-        voice: 'Aoede',
-        instructions: 'Sound gentle and supportive, never harsh.',
-      },
     );
   };
 

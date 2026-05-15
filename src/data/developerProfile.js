@@ -21,9 +21,9 @@ export const developerProfile = {
   },
   developers: [
     {
-      name: 'Developer 1',
+      name: 'Misbahul Munir',
       role: 'Frontend Developer',
-      photo: '/assets/profile/developer-1.jpg',
+      photo: '/assets/profile/pengembang.jpeg',
       details: [
         'Membangun tampilan aplikasi Javanesia.',
         'Mengembangkan halaman materi, video, dan game interaktif.',
