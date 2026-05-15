@@ -95,6 +95,9 @@ function playApplauseSound() {
 export function useResultSound() {
   const playApplause = () => {
     playApplauseSound();
+    window.setTimeout(() => {
+      playGoogleVoice('Sempurna, aku bangga sama kamu');
+    }, 1250);
   };
 
   const playEncourage = () => {
