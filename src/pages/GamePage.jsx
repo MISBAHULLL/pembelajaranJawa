@@ -19,6 +19,17 @@ function countLineSyllables(line) {
   return line.trim().split(/\s+/).reduce((sum, w) => sum + countSyllables(w), 0);
 }
 
+function getLevelMaxScore(level) {
+  if (!level) return 0;
+  if (level.type === 'theme-select') return (level.selectCount ?? 0) * 10;
+  if (level.questions[0]?.type === 'compose') return level.questions.length * 10;
+  return level.questions.length;
+}
+
+function clampScore(score, maxScore) {
+  return Math.min(Math.max(score ?? 0, 0), maxScore);
+}
+
 // ── Compose scoring ──────────────────────────────────────────────────────────
 // Nilai per soal = 10, dibagi:
 //   kata kunci ada   = 3 poin
@@ -135,8 +146,10 @@ function ProgressBar({ current, total, color }) {
 // ── Level selection screen ───────────────────────────────────────────────────
 function LevelSelect({ scores, onSelect, onReset }) {
   const playClick = useClickSound();
-  const totalScore = Object.values(scores).reduce((a, b) => a + b, 0);
-  const maxScore = gameLevels.reduce((a, l) => a + l.questions.length, 0);
+  const maxScore = gameLevels.reduce((sum, level) => sum + getLevelMaxScore(level), 0);
+  const totalScore = gameLevels.reduce((sum, level) => (
+    sum + clampScore(scores[level.id], getLevelMaxScore(level))
+  ), 0);
   const hasAnyScore = totalScore > 0;
 
   return (
@@ -177,25 +190,16 @@ function LevelSelect({ scores, onSelect, onReset }) {
 
       <div className="grid w-full grid-cols-1 gap-5 sm:grid-cols-3">
         {gameLevels.map((level, idx) => {
-          const best = scores[level.id] ?? 0;
-          const isLevel3 = level.type === 'theme-select';
-          const total = isLevel3 ? (level.selectCount * 10) : level.questions.length;
-          const isCompose = !isLevel3 && level.questions[0]?.type === 'compose';
-          const maxScore = isCompose ? level.questions.length * 10 : total;
-          const pct = maxScore > 0 ? Math.round((best / maxScore) * 100) : 0;
+          const levelMaxScore = getLevelMaxScore(level);
+          const best = clampScore(scores[level.id], levelMaxScore);
+          const pct = levelMaxScore > 0 ? Math.round((best / levelMaxScore) * 100) : 0;
           const starsEarned = pct >= 80 ? 3 : pct >= 50 ? 2 : pct > 0 ? 1 : 0;
-          const hasQuestions = isLevel3 ? true : level.questions.length > 0;
+          const hasQuestions = level.type === 'theme-select' ? true : level.questions.length > 0;
           // Unlock: skor level sebelumnya >= 70% dari skor maksimalnya
           const prevLevel = gameLevels[idx - 1];
-          const prevIsLevel3 = prevLevel?.type === 'theme-select';
-          const prevMax = prevLevel
-            ? (prevIsLevel3
-                ? prevLevel.selectCount * 10
-                : prevLevel.questions[0]?.type === 'compose'
-                  ? prevLevel.questions.length * 10
-                  : prevLevel.questions.length)
-            : 0;
-          const unlocked = idx === 0 || (scores[gameLevels[idx - 1].id] ?? 0) >= Math.ceil(prevMax * 0.7);
+          const prevMax = getLevelMaxScore(prevLevel);
+          const prevScore = clampScore(scores[prevLevel?.id], prevMax);
+          const unlocked = idx === 0 || prevScore >= Math.ceil(prevMax * 0.7);
           const isAvailable = hasQuestions && unlocked;
 
           return (
@@ -234,10 +238,10 @@ function LevelSelect({ scores, onSelect, onReset }) {
 
               <p className="text-xs font-semibold leading-snug text-white/75">{level.description}</p>
 
-              {best > 0 && total > 0 && (
+              {best > 0 && levelMaxScore > 0 && (
                 <div className="w-full">
-                  <ProgressBar current={best} total={maxScore} color="rgba(255,255,255,0.9)" />
-                  <p className="mt-1 text-xs font-bold text-white/70">Skor terbaik: {best}/{maxScore}</p>
+                  <ProgressBar current={best} total={levelMaxScore} color="rgba(255,255,255,0.9)" />
+                  <p className="mt-1 text-xs font-bold text-white/70">Skor terbaik: {best}/{levelMaxScore}</p>
                 </div>
               )}
 
@@ -1350,16 +1354,16 @@ function ResultOverlay({ pct, levelColor, onDone }) {
 }
 
 // ── Result screen ────────────────────────────────────────────────────────────
-function ResultScreen({ level, score, maxScoreOverride, onRetry, onBack }) {
+function ResultScreen({ level, score, onRetry, onBack }) {
   const playClick = useClickSound();
   const { playApplause, playEncourage, playFailed } = useResultSound();
   const [showOverlay, setShowOverlay] = useState(true);
-  const total = level.questions.length;
-  const isCompose = level.questions[0]?.type === 'compose';
-  const maxScore = maxScoreOverride ?? (isCompose ? total * 10 : total);
-  const pct = maxScore > 0 ? Math.round((score / maxScore) * 100) : 0;
+  const maxScore = getLevelMaxScore(level);
+  const displayScore = clampScore(score, maxScore);
+  const pct = maxScore > 0 ? Math.round((displayScore / maxScore) * 100) : 0;
   const starsEarned = pct >= 80 ? 3 : pct >= 50 ? 2 : pct > 0 ? 1 : 0;
   const isSuccess = pct >= 70;
+  const isCompose = level.type === 'theme-select' || level.questions[0]?.type === 'compose';
 
   const resultFeedback = pct === 100
     ? { msg: 'Luar biasa! Sampurna! 🏆', sub: 'Kowe pancen jago banget!' }
@@ -1455,7 +1459,7 @@ function ResultScreen({ level, score, maxScoreOverride, onRetry, onBack }) {
               filter: `drop-shadow(0 4px 20px ${level.color}88)`,
             }}
           >
-            {score}
+            {displayScore}
             <span className="text-[0.45em] text-white/50">/{maxScore}</span>
           </div>
           <div className="mt-1 text-base font-black text-white/70 tracking-wide">
@@ -1581,10 +1585,12 @@ export function GamePage() {
   };
 
   const handleFinish = (score) => {
-    setLastScore(score);
+    const maxScore = getLevelMaxScore(activeLevel);
+    const finalScore = clampScore(score, maxScore);
+    setLastScore(finalScore);
     setScores((prev) => ({
       ...prev,
-      [activeLevel.id]: Math.max(prev[activeLevel.id] ?? 0, score),
+      [activeLevel.id]: Math.max(prev[activeLevel.id] ?? 0, finalScore),
     }));
     setLevel3Questions(null);
     setScreen('result');
@@ -1643,7 +1649,6 @@ export function GamePage() {
         <ResultScreen
           level={activeLevel}
           score={lastScore}
-          maxScoreOverride={activeLevel.type === 'theme-select' ? activeLevel.selectCount * 10 : undefined}
           onRetry={handleRetry}
           onBack={handleBack}
         />
