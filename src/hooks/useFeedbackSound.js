@@ -3,6 +3,8 @@ import { playNaturalJavaneseSpeech, prepareNaturalJavaneseSpeech } from './useNa
 
 const CORRECT_TEXT = 'Bener. Jawabanmu wis trep.';
 const WRONG_TEXT = 'Durung trep. Ayo dicoba maneh.';
+const CORRECT_SOUND_SRC = '/assets/sounds/feedback-benar.mp3';
+const WRONG_SOUND_SRC = '/assets/sounds/feedback-salah.mp3';
 const CORRECT_TTS_OPTIONS = {
   voice: 'Leda',
   instructions:
@@ -43,23 +45,43 @@ function speakFeedback(text) {
   }
 }
 
+function playSoundEffect(src, onError) {
+  try {
+    const audio = new Audio(src);
+    audio.preload = 'auto';
+    audio.volume = 1;
+    audio.play().catch(onError);
+  } catch {
+    onError?.();
+  }
+}
+
 export function useFeedbackSound() {
   useEffect(() => {
     prepareNaturalJavaneseSpeech(CORRECT_TEXT, { ttsOptions: CORRECT_TTS_OPTIONS });
     prepareNaturalJavaneseSpeech(WRONG_TEXT, { ttsOptions: WRONG_TTS_OPTIONS });
+
+    [CORRECT_SOUND_SRC, WRONG_SOUND_SRC].forEach((src) => {
+      const audio = new Audio(src);
+      audio.preload = 'auto';
+    });
   }, []);
 
   const playCorrect = () => {
-    playNaturalJavaneseSpeech(CORRECT_TEXT, {
-      ttsOptions: CORRECT_TTS_OPTIONS,
-      onError: () => speakFeedback('Bener'),
+    playSoundEffect(CORRECT_SOUND_SRC, () => {
+      playNaturalJavaneseSpeech(CORRECT_TEXT, {
+        ttsOptions: CORRECT_TTS_OPTIONS,
+        onError: () => speakFeedback('Bener'),
+      });
     });
   };
 
   const playWrong = () => {
-    playNaturalJavaneseSpeech(WRONG_TEXT, {
-      ttsOptions: WRONG_TTS_OPTIONS,
-      onError: () => speakFeedback('Salah'),
+    playSoundEffect(WRONG_SOUND_SRC, () => {
+      playNaturalJavaneseSpeech(WRONG_TEXT, {
+        ttsOptions: WRONG_TTS_OPTIONS,
+        onError: () => speakFeedback('Salah'),
+      });
     });
   };
 

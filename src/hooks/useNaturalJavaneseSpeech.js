@@ -1,4 +1,5 @@
 const PUTER_SCRIPT_SRC = 'https://js.puter.com/v2/';
+const ENABLE_PUTER_TTS = import.meta.env?.VITE_ENABLE_PUTER_TTS !== 'false';
 
 const DEFAULT_GEMINI_TTS_OPTIONS = {
   provider: 'gemini',
@@ -82,6 +83,10 @@ function splitSpeechText(text) {
 function loadPuterScript() {
   if (typeof window === 'undefined') {
     return Promise.reject(new Error('Puter is only available in the browser.'));
+  }
+
+  if (!ENABLE_PUTER_TTS) {
+    return Promise.reject(new Error('Puter TTS is disabled.'));
   }
 
   if (window.puter?.ai?.txt2speech) {
@@ -233,7 +238,13 @@ function requestGeminiAudio(text, ttsOptions) {
   }
 
   const request = loadPuterScript()
-    .then((puter) => puter.ai.txt2speech(text, getMergedTtsOptions(ttsOptions)))
+    .then((puter) => {
+      if (!puter.auth?.isSignedIn?.()) {
+        throw new Error('Puter user is not signed in.');
+      }
+
+      return puter.ai.txt2speech(text, getMergedTtsOptions(ttsOptions));
+    })
     .then((audio) => {
       if (!audio?.src) {
         return audio;
@@ -271,6 +282,7 @@ export function playNaturalJavaneseSpeech(text, options = {}) {
     onLoading,
     onEnd,
     onError,
+    audioSrc,
     ttsOptions,
     fallbackToBrowser = true,
     speechOptions,
@@ -318,11 +330,13 @@ export function playNaturalJavaneseSpeech(text, options = {}) {
     onError?.(error);
   };
 
-  onLoading?.();
+  const playGeneratedSpeech = () => {
+    chunks.slice(1).forEach((chunk) => {
+      requestGeminiAudio(chunk, ttsOptions).catch(() => null);
+    });
 
-  chunks.slice(1).forEach((chunk) => {
-    requestGeminiAudio(chunk, ttsOptions).catch(() => null);
-  });
+    playChunk(0);
+  };
 
   const playChunk = (index) => {
     if (stopped) return;
@@ -353,12 +367,37 @@ export function playNaturalJavaneseSpeech(text, options = {}) {
     .catch(fail);
   };
 
+  const playRecordedAudio = () => {
+    if (!audioSrc) return false;
+
+    const audio = new Audio(audioSrc);
+    activeAudio = audio;
+    playAudioElement(audio, {
+      volume: options.volume ?? 1,
+      onStart: emitStart,
+      onEnd: () => {
+        activeAudio = null;
+        onEnd?.();
+      },
+      onError: () => {
+        activeAudio = null;
+        playGeneratedSpeech();
+      },
+    });
+
+    return true;
+  };
+
   if (chunks.length === 0) {
     onEnd?.();
     return controller;
   }
 
-  playChunk(0);
+  onLoading?.();
+
+  if (!playRecordedAudio()) {
+    playGeneratedSpeech();
+  }
 
   return controller;
 }

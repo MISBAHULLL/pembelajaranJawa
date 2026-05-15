@@ -1,65 +1,171 @@
-import { playNaturalJavaneseSpeech, prepareNaturalJavaneseSpeech } from './useNaturalJavaneseSpeech.js';
+const RESULT_LULUS_SOUND_SRC = '/assets/sounds/result-lulus.mp3';
+const RESULT_SAMPURNA_SOUND_SRC = '/assets/sounds/result-sampurna.mp3';
+const RESULT_GAGAL_SOUND_SRC = '/assets/sounds/salah.mp3';
+const RESULT_TEPUK_TANGAN_SRC = '/assets/sounds/tepukTangan.mp3';
+const RESULT_SORAKAN_SRC = '/assets/sounds/sorakan.mp3';
 
-function speakFallback(text) {
+const RESULT_SOUND_SOURCES = [
+  RESULT_LULUS_SOUND_SRC,
+  RESULT_SAMPURNA_SOUND_SRC,
+  RESULT_GAGAL_SOUND_SRC,
+  RESULT_TEPUK_TANGAN_SRC,
+  RESULT_SORAKAN_SRC,
+];
+
+const audioElementCache = new Map();
+const decodedBufferCache = new Map();
+let sharedAudioContext = null;
+let activeResultAudio = null;
+
+function getSharedAudioContext() {
+  if (typeof window === 'undefined') return null;
+  const AudioContextClass = window.AudioContext || window.webkitAudioContext;
+  if (!AudioContextClass) return null;
+
+  if (!sharedAudioContext || sharedAudioContext.state === 'closed') {
+    sharedAudioContext = new AudioContextClass();
+  }
+
+  sharedAudioContext.resume?.();
+  return sharedAudioContext;
+}
+
+function getCachedAudioElement(src) {
+  if (typeof window === 'undefined') return null;
+
+  if (!audioElementCache.has(src)) {
+    const audio = new Audio(src);
+    audio.preload = 'auto';
+    audio.volume = 1;
+    audioElementCache.set(src, audio);
+  }
+
+  return audioElementCache.get(src);
+}
+
+function preloadDecodedBuffer(src) {
+  const ctx = getSharedAudioContext();
+  if (!ctx || decodedBufferCache.has(src)) return decodedBufferCache.get(src) ?? null;
+
+  const request = fetch(src)
+    .then((response) => {
+      if (!response.ok) {
+        throw new Error(`HTTP ${response.status}`);
+      }
+      return response.arrayBuffer();
+    })
+    .then((arrayBuffer) => ctx.decodeAudioData(arrayBuffer.slice(0)))
+    .catch((error) => {
+      decodedBufferCache.delete(src);
+      console.warn(`Result sound gagal dipreload: ${src}`, error);
+      return null;
+    });
+
+  decodedBufferCache.set(src, request);
+  return request;
+}
+
+function stopActiveResultAudio() {
+  if (!activeResultAudio) return;
+
   try {
-    if (!('speechSynthesis' in window) || !('SpeechSynthesisUtterance' in window)) {
-      return;
-    }
-
-    window.speechSynthesis.cancel();
-    const utterance = new SpeechSynthesisUtterance(text);
-    const voices = window.speechSynthesis.getVoices();
-    const indonesianVoice = voices.find((voice) => voice.lang?.toLowerCase().startsWith('id'));
-
-    if (indonesianVoice) {
-      utterance.voice = indonesianVoice;
-    }
-
-    utterance.lang = indonesianVoice?.lang || 'id-ID';
-    utterance.rate = 0.95;
-    utterance.pitch = text.includes('gagal') ? 0.9 : 1.02;
-    utterance.volume = 1;
-    window.speechSynthesis.speak(utterance);
+    activeResultAudio.pause();
+    activeResultAudio.currentTime = 0;
   } catch {
-    // Ignore unsupported speech synthesis.
+    // Ignore stale media state.
+  }
+
+  activeResultAudio = null;
+}
+
+function playDecodedBuffer(src) {
+  const ctx = getSharedAudioContext();
+  const cached = decodedBufferCache.get(src);
+  if (!ctx || !cached) return false;
+
+  cached.then((buffer) => {
+    if (!buffer) return;
+
+    const source = ctx.createBufferSource();
+    const gainNode = ctx.createGain();
+    source.buffer = buffer;
+    gainNode.gain.value = 1;
+    source.connect(gainNode);
+    gainNode.connect(ctx.destination);
+    source.start(0);
+  }).catch((error) => {
+    console.warn(`Result sound decoded-buffer gagal diputar: ${src}`, error);
+  });
+
+  return true;
+}
+
+function playHtmlAudio(src, onError) {
+  const audio = getCachedAudioElement(src);
+  if (!audio) {
+    onError?.();
+    return;
+  }
+
+  // Resume AudioContext dulu supaya browser gak mblokir
+  try { getSharedAudioContext()?.resume?.(); } catch { /* ignore */ }
+
+  stopActiveResultAudio();
+  activeResultAudio = audio;
+
+  try {
+    audio.pause();
+    audio.muted = false;
+    audio.volume = 1;
+    // Reset currentTime aman mung yen wis siap
+    try { audio.currentTime = 0; } catch { /* ignore */ }
+
+    const playPromise = audio.play();
+    if (playPromise?.catch) {
+      playPromise.catch((error) => {
+        console.warn(`Result sound HTMLAudio gagal diputar: ${src}`, error);
+        if (activeResultAudio === audio) activeResultAudio = null;
+        onError?.();
+      });
+    }
+  } catch (error) {
+    console.warn(`Result sound HTMLAudio gagal diputar: ${src}`, error);
+    if (activeResultAudio === audio) activeResultAudio = null;
+    onError?.();
   }
 }
 
-function playResultVoice(text, { voice = 'Kore', instructions = '' } = {}) {
-  const ttsOptions = {
-    voice,
-    instructions: [
-      'This is quiz result feedback for an Indonesian junior high school student learning Bahasa Jawa.',
-      'Use a warm, encouraging Javanese teacher voice.',
-      'Keep the pronunciation natural for Javanese and Indonesian words.',
-      instructions,
-    ].filter(Boolean).join(' '),
-  };
+function playSoundEffect(src, fallback) {
+  try {
+    getSharedAudioContext();
+    preloadDecodedBuffer(src);
+  } catch (error) {
+    console.warn(`Result sound gagal disiapkan: ${src}`, error);
+  }
 
-  playNaturalJavaneseSpeech(text, {
-    ttsOptions,
-    onError: () => speakFallback(text),
+  playHtmlAudio(src, () => {
+    if (playDecodedBuffer(src)) return;
+
+    try {
+      const audio = new Audio(src);
+      audio.volume = 1;
+      audio.play().catch(() => fallback?.());
+    } catch {
+      fallback?.();
+    }
   });
 }
 
-function scheduleResultVoice(text, delay, options) {
-  const ttsOptions = {
-    voice: options?.voice ?? 'Kore',
-    instructions: [
-      'This is quiz result feedback for an Indonesian junior high school student learning Bahasa Jawa.',
-      'Use a warm, encouraging Javanese teacher voice.',
-      'Keep the pronunciation natural for Javanese and Indonesian words.',
-      options?.instructions,
-    ].filter(Boolean).join(' '),
-  };
-
-  prepareNaturalJavaneseSpeech(text, { ttsOptions });
-  window.setTimeout(() => {
-    playResultVoice(text, {
-      voice: ttsOptions.voice,
-      instructions: options?.instructions,
+function prepareResultSounds() {
+  try {
+    getSharedAudioContext();
+    RESULT_SOUND_SOURCES.forEach((src) => {
+      getCachedAudioElement(src)?.load();
+      preloadDecodedBuffer(src);
     });
-  }, delay);
+  } catch (error) {
+    console.warn('Result sound preload gagal.', error);
+  }
 }
 
 function createAudioContext() {
@@ -110,8 +216,6 @@ function playApplauseSound() {
   }
 }
 
-// ── Tone helper ──────────────────────────────────────────────────────────────
-// Mainkan satu nada dengan oscillator
 function playTone(ctx, freq, startAt, duration, gainValue = 0.35, type = 'sine') {
   const osc = ctx.createOscillator();
   const gain = ctx.createGain();
@@ -131,51 +235,35 @@ function playTone(ctx, freq, startAt, duration, gainValue = 0.35, type = 'sine')
   osc.stop(startAt + duration);
 }
 
-// ── Backsound ≥ 70: Melodi ceria / fanfare ───────────────────────────────────
-// Tangga nada pentatonik Jawa (pelog): C D E G A
-// Pola: naik-naik-naik lalu arpeggio chord
 function playSuccessMusic() {
   try {
     const ctx = createAudioContext();
     const t = ctx.currentTime;
 
-    // Melodi utama — nada naik ceria
-    const melody = [
-      // freq,  start, dur,  gain
-      [523.25, 0.00, 0.18, 0.30],  // C5
-      [587.33, 0.18, 0.18, 0.30],  // D5
-      [659.25, 0.36, 0.18, 0.30],  // E5
-      [783.99, 0.54, 0.28, 0.35],  // G5
-      [880.00, 0.82, 0.18, 0.35],  // A5
-      [783.99, 1.00, 0.14, 0.28],  // G5
-      [880.00, 1.14, 0.14, 0.28],  // A5
-      [1046.5, 1.28, 0.45, 0.40],  // C6 — puncak
-    ];
-
-    // Arpeggio chord C mayor di bawah
-    const chord = [
-      [261.63, 0.00, 0.12, 0.18],  // C4
-      [329.63, 0.10, 0.12, 0.18],  // E4
-      [392.00, 0.20, 0.12, 0.18],  // G4
-      [523.25, 0.30, 0.20, 0.18],  // C5
-    ];
-
-    // Akord penutup — G major arpeggio
-    const outro = [
-      [392.00, 1.75, 0.12, 0.20],  // G4
-      [493.88, 1.87, 0.12, 0.20],  // B4
-      [587.33, 1.99, 0.12, 0.20],  // D5
-      [783.99, 2.11, 0.35, 0.25],  // G5
-    ];
-
-    melody.forEach(([freq, start, dur, gain]) =>
+    [
+      [523.25, 0.00, 0.18, 0.30],
+      [587.33, 0.18, 0.18, 0.30],
+      [659.25, 0.36, 0.18, 0.30],
+      [783.99, 0.54, 0.28, 0.35],
+      [880.00, 0.82, 0.18, 0.35],
+      [783.99, 1.00, 0.14, 0.28],
+      [880.00, 1.14, 0.14, 0.28],
+      [1046.5, 1.28, 0.45, 0.40],
+    ].forEach(([freq, start, dur, gain]) =>
       playTone(ctx, freq, t + start, dur, gain, 'triangle')
     );
-    chord.forEach(([freq, start, dur, gain]) =>
+
+    [
+      [261.63, 0.00, 0.12, 0.18],
+      [329.63, 0.10, 0.12, 0.18],
+      [392.00, 0.20, 0.12, 0.18],
+      [523.25, 0.30, 0.20, 0.18],
+      [392.00, 1.75, 0.12, 0.20],
+      [493.88, 1.87, 0.12, 0.20],
+      [587.33, 1.99, 0.12, 0.20],
+      [783.99, 2.11, 0.35, 0.25],
+    ].forEach(([freq, start, dur, gain]) =>
       playTone(ctx, freq, t + start, dur, gain, 'sine')
-    );
-    outro.forEach(([freq, start, dur, gain]) =>
-      playTone(ctx, freq, t + start, dur, gain, 'triangle')
     );
 
     window.setTimeout(() => ctx.close(), 3000);
@@ -184,36 +272,24 @@ function playSuccessMusic() {
   }
 }
 
-// ── Backsound < 70: Melodi pelan / motivasi ──────────────────────────────────
-// Nada turun lembut, tempo lebih lambat — tetap positif/motivasi
 function playEncourageMusic() {
   try {
     const ctx = createAudioContext();
     const t = ctx.currentTime;
 
-    // Melodi turun pelan — A minor feel
-    const melody = [
-      [440.00, 0.00, 0.30, 0.25],  // A4
-      [392.00, 0.35, 0.30, 0.25],  // G4
-      [349.23, 0.70, 0.30, 0.25],  // F4
-      [329.63, 1.05, 0.40, 0.28],  // E4
-      [349.23, 1.50, 0.25, 0.22],  // F4 — sedikit naik lagi (harapan)
-      [392.00, 1.80, 0.25, 0.22],  // G4
-      [440.00, 2.10, 0.50, 0.28],  // A4 — kembali ke awal (resolusi)
-    ];
-
-    // Bass sederhana
-    const bass = [
-      [220.00, 0.00, 0.25, 0.15],  // A3
-      [196.00, 0.70, 0.25, 0.15],  // G3
-      [174.61, 1.40, 0.25, 0.15],  // F3
-      [220.00, 2.10, 0.40, 0.15],  // A3
-    ];
-
-    melody.forEach(([freq, start, dur, gain]) =>
-      playTone(ctx, freq, t + start, dur, gain, 'sine')
-    );
-    bass.forEach(([freq, start, dur, gain]) =>
+    [
+      [440.00, 0.00, 0.30, 0.25],
+      [392.00, 0.35, 0.30, 0.25],
+      [349.23, 0.70, 0.30, 0.25],
+      [329.63, 1.05, 0.40, 0.28],
+      [349.23, 1.50, 0.25, 0.22],
+      [392.00, 1.80, 0.25, 0.22],
+      [440.00, 2.10, 0.50, 0.28],
+      [220.00, 0.00, 0.25, 0.15],
+      [196.00, 0.70, 0.25, 0.15],
+      [174.61, 1.40, 0.25, 0.15],
+      [220.00, 2.10, 0.40, 0.15],
+    ].forEach(([freq, start, dur, gain]) =>
       playTone(ctx, freq, t + start, dur, gain, 'sine')
     );
 
@@ -223,46 +299,55 @@ function playEncourageMusic() {
   }
 }
 
+// Helper: putar satu file tambahan dengan delay (volume bisa dikustom)
+function playExtra(src, delayMs, volume = 0.85) {
+  window.setTimeout(() => {
+    try {
+      const audio = getCachedAudioElement(src);
+      if (!audio) return;
+      try { getSharedAudioContext()?.resume?.(); } catch { /* ignore */ }
+      try { audio.currentTime = 0; } catch { /* ignore */ }
+      audio.volume = volume;
+      audio.play().catch(() => {/* silent fallback */});
+    } catch { /* ignore */ }
+  }, delayMs);
+}
+
+// Putar dua file audio (utama + satu tambahan)
+function playDouble(src1, src2, fallback) {
+  playSoundEffect(src1, fallback);
+  playExtra(src2, 80);
+}
+
+// Putar tiga file audio sekaligus (utama + dua tambahan)
+function playTriple(src1, src2, src3, fallback) {
+  playSoundEffect(src1, fallback);
+  playExtra(src2, 80);
+  playExtra(src3, 160);
+}
+
 export function useResultSound() {
-  // Skor sempurna (100%): applause + TTS + fanfare
   const playApplause = () => {
-    playApplauseSound();
-    playSuccessMusic();
-    scheduleResultVoice(
-      'Sampurna. Apik banget, kowe wis pinter nyinaoni parikan.',
-      1250,
-      {
-        voice: 'Leda',
-        instructions: 'Sound proud and happy, but still calm like a teacher in class.',
-      },
-    );
+    // Sempurna (100%): result-sampurna + tepukTangan + result-lulus
+    playTriple(RESULT_SAMPURNA_SOUND_SRC, RESULT_TEPUK_TANGAN_SRC, RESULT_LULUS_SOUND_SRC, () => {
+      playApplauseSound();
+      playSuccessMusic();
+    });
   };
 
-  // Skor ≥ 70%: backsound ceria + TTS semangat
   const playEncourage = () => {
-    playSuccessMusic();
-    scheduleResultVoice(
-      'Apik. Nilaimu wis lumayan. Terus latihan supaya parikanmu luwih runtut.',
-      1800,
-      {
-        voice: 'Kore',
-        instructions: 'Sound encouraging and clear, with a relaxed pace.',
-      },
-    );
+    // Berhasil (≥70%): result-lulus + tepukTangan + result-sampurna
+    playTriple(RESULT_LULUS_SOUND_SRC, RESULT_TEPUK_TANGAN_SRC, RESULT_SAMPURNA_SOUND_SRC, () => {
+      playSuccessMusic();
+    });
   };
 
-  // Skor < 70%: backsound pelan/motivasi + TTS
   const playFailed = () => {
-    playEncourageMusic();
-    scheduleResultVoice(
-      'Aja kuwatir. Ayo sinau maneh, banjur coba sepisan maneh.',
-      1800,
-      {
-        voice: 'Aoede',
-        instructions: 'Sound gentle and supportive, never harsh.',
-      },
-    );
+    // Gagal (<70%): salah + sorakan
+    playDouble(RESULT_GAGAL_SOUND_SRC, RESULT_SORAKAN_SRC, () => {
+      playEncourageMusic();
+    });
   };
 
-  return { playApplause, playEncourage, playFailed };
+  return { prepareResultSounds, playApplause, playEncourage, playFailed };
 }

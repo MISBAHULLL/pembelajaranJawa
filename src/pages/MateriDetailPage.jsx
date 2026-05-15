@@ -40,6 +40,7 @@ export function MateriDetailPage({ item, index, total, onNext, onPrev, hasNext, 
       stopNarration();
     } else {
       narrationRef.current = playNaturalJavaneseSpeech(narrationText, {
+        audioSrc: item.audioSrc,
         onLoading: () => setIsPreparingAudio(true),
         onStart: () => {
           setIsPreparingAudio(false);
