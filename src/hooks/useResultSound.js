@@ -1,15 +1,4 @@
-const GOOGLE_TTS_URL = 'https://translate.google.com/translate_tts';
-
-function getGoogleTtsUrl(text) {
-  const params = new URLSearchParams({
-    ie: 'UTF-8',
-    client: 'tw-ob',
-    tl: 'id',
-    q: text,
-  });
-
-  return `${GOOGLE_TTS_URL}?${params.toString()}`;
-}
+import { playNaturalJavaneseSpeech, prepareNaturalJavaneseSpeech } from './useNaturalJavaneseSpeech.js';
 
 function speakFallback(text) {
   try {
@@ -36,14 +25,41 @@ function speakFallback(text) {
   }
 }
 
-function playGoogleVoice(text) {
-  try {
-    const audio = new Audio(getGoogleTtsUrl(text));
-    audio.volume = 1;
-    audio.play().catch(() => speakFallback(text));
-  } catch {
-    speakFallback(text);
-  }
+function playResultVoice(text, { voice = 'Kore', instructions = '' } = {}) {
+  const ttsOptions = {
+    voice,
+    instructions: [
+      'This is quiz result feedback for an Indonesian junior high school student learning Bahasa Jawa.',
+      'Use a warm, encouraging Javanese teacher voice.',
+      'Keep the pronunciation natural for Javanese and Indonesian words.',
+      instructions,
+    ].filter(Boolean).join(' '),
+  };
+
+  playNaturalJavaneseSpeech(text, {
+    ttsOptions,
+    onError: () => speakFallback(text),
+  });
+}
+
+function scheduleResultVoice(text, delay, options) {
+  const ttsOptions = {
+    voice: options?.voice ?? 'Kore',
+    instructions: [
+      'This is quiz result feedback for an Indonesian junior high school student learning Bahasa Jawa.',
+      'Use a warm, encouraging Javanese teacher voice.',
+      'Keep the pronunciation natural for Javanese and Indonesian words.',
+      options?.instructions,
+    ].filter(Boolean).join(' '),
+  };
+
+  prepareNaturalJavaneseSpeech(text, { ttsOptions });
+  window.setTimeout(() => {
+    playResultVoice(text, {
+      voice: ttsOptions.voice,
+      instructions: options?.instructions,
+    });
+  }, delay);
 }
 
 function createAudioContext() {
@@ -212,25 +228,40 @@ export function useResultSound() {
   const playApplause = () => {
     playApplauseSound();
     playSuccessMusic();
-    window.setTimeout(() => {
-      playGoogleVoice('Sempurna, aku bangga sama kamu');
-    }, 1250);
+    scheduleResultVoice(
+      'Sampurna. Apik banget, kowe wis pinter nyinaoni parikan.',
+      1250,
+      {
+        voice: 'Leda',
+        instructions: 'Sound proud and happy, but still calm like a teacher in class.',
+      },
+    );
   };
 
   // Skor ≥ 70%: backsound ceria + TTS semangat
   const playEncourage = () => {
     playSuccessMusic();
-    window.setTimeout(() => {
-      playGoogleVoice('Ayo semangat, coba lagi');
-    }, 1800);
+    scheduleResultVoice(
+      'Apik. Nilaimu wis lumayan. Terus latihan supaya parikanmu luwih runtut.',
+      1800,
+      {
+        voice: 'Kore',
+        instructions: 'Sound encouraging and clear, with a relaxed pace.',
+      },
+    );
   };
 
   // Skor < 70%: backsound pelan/motivasi + TTS
   const playFailed = () => {
     playEncourageMusic();
-    window.setTimeout(() => {
-      playGoogleVoice('Kamu gagal, coba lagi');
-    }, 1800);
+    scheduleResultVoice(
+      'Aja kuwatir. Ayo sinau maneh, banjur coba sepisan maneh.',
+      1800,
+      {
+        voice: 'Aoede',
+        instructions: 'Sound gentle and supportive, never harsh.',
+      },
+    );
   };
 
   return { playApplause, playEncourage, playFailed };

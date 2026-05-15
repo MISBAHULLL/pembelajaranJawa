@@ -1,53 +1,32 @@
 import React, { useState, useEffect, useRef } from 'react';
-import { ChevronLeft, ChevronRight, Volume2, Square, BookOpen } from 'lucide-react';
+import { ChevronLeft, ChevronRight, Volume2, Square, BookOpen, LoaderCircle } from 'lucide-react';
 import { useClickSound } from '../hooks/useClickSound.js';
-import { playGoogleJavaneseSpeech } from '../hooks/useGoogleJavaneseSpeech.js';
+import { playNaturalJavaneseSpeech, prepareNaturalJavaneseSpeech } from '../hooks/useNaturalJavaneseSpeech.js';
+import { getMateriNarrationText, materiNarrationTtsOptions } from '../utils/materiSpeech.js';
 
 export function MateriDetailPage({ item, index, total, onNext, onPrev, hasNext, hasPrev, onBackToList }) {
   const [isPlaying, setIsPlaying] = useState(false);
+  const [isPreparingAudio, setIsPreparingAudio] = useState(false);
   const [touchStart, setTouchStart] = useState(null);
   const [touchEnd, setTouchEnd] = useState(null);
   const narrationRef = useRef(null);
   const playClick = useClickSound();
 
   const lines = item.example ? item.example.split('\n') : [];
+  const narrationText = getMateriNarrationText(item);
 
   const stopNarration = () => {
     narrationRef.current?.stop();
     narrationRef.current = null;
     window.speechSynthesis?.cancel();
     setIsPlaying(false);
-  };
-
-  const playSpeechFallback = (text) => {
-    if (!('speechSynthesis' in window) || !('SpeechSynthesisUtterance' in window)) {
-      setIsPlaying(false);
-      return;
-    }
-
-    window.speechSynthesis.cancel();
-    const utterance = new SpeechSynthesisUtterance(text);
-    const voices = window.speechSynthesis.getVoices();
-    const javaneseVoice = voices.find((voice) => voice.lang?.toLowerCase().startsWith('jv'));
-    const indonesianVoice = voices.find((voice) => voice.lang?.toLowerCase().startsWith('id'));
-    const selectedVoice = javaneseVoice || indonesianVoice;
-
-    if (selectedVoice) {
-      utterance.voice = selectedVoice;
-    }
-
-    utterance.lang = selectedVoice?.lang || 'jv-ID';
-    utterance.rate = 0.88;
-    utterance.pitch = 1;
-    utterance.onend = () => setIsPlaying(false);
-    utterance.onerror = () => setIsPlaying(false);
-    window.speechSynthesis.speak(utterance);
-    setIsPlaying(true);
+    setIsPreparingAudio(false);
   };
 
   // Stop narration when item changes
   useEffect(() => {
     stopNarration();
+    prepareNaturalJavaneseSpeech(narrationText, { ttsOptions: materiNarrationTtsOptions });
   }, [item]);
 
   // Cleanup on unmount
@@ -57,14 +36,24 @@ export function MateriDetailPage({ item, index, total, onNext, onPrev, hasNext, 
 
   const toggleSpeech = () => {
     playClick();
-    if (isPlaying) {
+    if (isPlaying || isPreparingAudio) {
       stopNarration();
     } else {
-      const text = `${item.title}. ${item.body}${item.example ? '. Tuladha: ' + item.example : ''}`;
-      narrationRef.current = playGoogleJavaneseSpeech(text, {
-        onStart: () => setIsPlaying(true),
-        onEnd: () => setIsPlaying(false),
-        onError: () => playSpeechFallback(text),
+      narrationRef.current = playNaturalJavaneseSpeech(narrationText, {
+        onLoading: () => setIsPreparingAudio(true),
+        onStart: () => {
+          setIsPreparingAudio(false);
+          setIsPlaying(true);
+        },
+        onEnd: () => {
+          setIsPreparingAudio(false);
+          setIsPlaying(false);
+        },
+        onError: () => {
+          setIsPreparingAudio(false);
+          setIsPlaying(false);
+        },
+        ttsOptions: materiNarrationTtsOptions,
       });
     }
   };
@@ -171,16 +160,20 @@ export function MateriDetailPage({ item, index, total, onNext, onPrev, hasNext, 
             <button
               type="button"
               onClick={toggleSpeech}
-              aria-label={isPlaying ? 'Hentikan suara' : 'Putar suara'}
-              title={isPlaying ? 'Hentikan Suara' : 'Putar Suara'}
+              aria-label={isPlaying ? 'Hentikan suara' : isPreparingAudio ? 'Menyiapkan suara' : 'Putar suara'}
+              title={isPlaying ? 'Hentikan Suara' : isPreparingAudio ? 'Menyiapkan Suara' : 'Putar Suara'}
               className={`mt-1 grid size-12 shrink-0 place-items-center rounded-full shadow-lg transition-all hover:scale-105 focus-visible:outline-none focus-visible:ring-4 focus-visible:ring-orange-200 ${
                 isPlaying
                   ? 'bg-red-500 text-white hover:bg-red-600'
+                  : isPreparingAudio
+                  ? 'cursor-wait bg-orange-400 text-white'
                   : 'bg-[#ff9700] text-white hover:bg-[#e68800]'
               }`}
             >
               {isPlaying
                 ? <Square size={18} fill="currentColor" aria-hidden="true" />
+                : isPreparingAudio
+                ? <LoaderCircle size={22} className="animate-spin" aria-hidden="true" />
                 : <Volume2 size={22} aria-hidden="true" />
               }
             </button>
