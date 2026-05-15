@@ -178,18 +178,22 @@ function LevelSelect({ scores, onSelect, onReset }) {
       <div className="grid w-full grid-cols-1 gap-5 sm:grid-cols-3">
         {gameLevels.map((level, idx) => {
           const best = scores[level.id] ?? 0;
-          const total = level.questions.length;
-          const isCompose = level.questions[0]?.type === 'compose';
-          const maxScore = isCompose ? total * 10 : total;
+          const isLevel3 = level.type === 'theme-select';
+          const total = isLevel3 ? (level.selectCount * 10) : level.questions.length;
+          const isCompose = !isLevel3 && level.questions[0]?.type === 'compose';
+          const maxScore = isCompose ? level.questions.length * 10 : total;
           const pct = maxScore > 0 ? Math.round((best / maxScore) * 100) : 0;
           const starsEarned = pct >= 80 ? 3 : pct >= 50 ? 2 : pct > 0 ? 1 : 0;
-          const hasQuestions = total > 0;
+          const hasQuestions = isLevel3 ? true : level.questions.length > 0;
           // Unlock: skor level sebelumnya >= 70% dari skor maksimalnya
           const prevLevel = gameLevels[idx - 1];
+          const prevIsLevel3 = prevLevel?.type === 'theme-select';
           const prevMax = prevLevel
-            ? (prevLevel.questions[0]?.type === 'compose'
-                ? prevLevel.questions.length * 10
-                : prevLevel.questions.length)
+            ? (prevIsLevel3
+                ? prevLevel.selectCount * 10
+                : prevLevel.questions[0]?.type === 'compose'
+                  ? prevLevel.questions.length * 10
+                  : prevLevel.questions.length)
             : 0;
           const unlocked = idx === 0 || (scores[gameLevels[idx - 1].id] ?? 0) >= Math.ceil(prevMax * 0.7);
           const isAvailable = hasQuestions && unlocked;
@@ -766,24 +770,196 @@ function ComposeQuestion({ q, level, questionNum, onScore, onNext, isLast }) {
   );
 }
 
+// ── Theme select screen (Tingkat 3) ─────────────────────────────────────────
+function ThemeSelectScreen({ level, onStart, onBack }) {
+  const [selected, setSelected] = useState([]);
+  const playClick = useClickSound();
+  const needed = level.selectCount;
+
+  const toggle = (theme) => {
+    playClick();
+    setSelected(prev => {
+      const already = prev.find(t => t.id === theme.id);
+      if (already) return prev.filter(t => t.id !== theme.id);
+      if (prev.length >= needed) return prev; // sudah cukup, tidak bisa tambah
+      return [...prev, theme];
+    });
+  };
+
+  const handleStart = () => {
+    if (selected.length < needed) return;
+    playClick();
+    // Buat questions dari tema yang dipilih
+    const questions = selected.map((t, i) => ({
+      id: `t3_selected_${i}`,
+      type: 'compose',
+      keyword: t.keyword,
+      theme: t.theme,
+      example: t.example,
+      themeEmoji: t.emoji,
+    }));
+    onStart(questions);
+  };
+
+  return (
+    <div className="mx-auto flex w-full max-w-[780px] flex-col gap-6 px-4 py-2">
+      {/* Header */}
+      <div className="flex items-center gap-3">
+        <button
+          type="button"
+          onClick={() => { playClick(); onBack(); }}
+          className="rounded-xl border-2 border-white bg-white/95 px-3 py-2 text-xs font-black uppercase text-[#2e1d10] shadow-md transition hover:bg-white hover:-translate-y-0.5"
+        >
+          ← Kembali
+        </button>
+        <div
+          className="flex items-center gap-2 rounded-full border-2 px-4 py-1.5 text-sm font-black shadow-md"
+          style={{ borderColor: level.color, background: 'white', color: level.color }}
+        >
+          {level.label} — {level.subtitle}
+        </div>
+      </div>
+
+      {/* Instruksi */}
+      <div
+        className="rounded-3xl p-5 text-white shadow-xl"
+        style={{ background: `linear-gradient(135deg, ${level.color}dd, ${level.color}99)` }}
+      >
+        <div className="mb-3 inline-flex items-center gap-2 rounded-full bg-white/20 px-3 py-1 text-xs font-black uppercase tracking-widest">
+          <Sparkles size={12} aria-hidden="true" />
+          Pituduh Soal
+        </div>
+        <h2 className="text-xl font-black leading-snug">Soal Latihan Nulis Parikan</h2>
+        <div className="mt-3 flex flex-col gap-1.5 text-sm font-semibold text-white/90">
+          <p>Gawea parikan dhewe kanthi basa Jawa. Parikanmu kudu:</p>
+          <ul className="mt-1 flex flex-col gap-1 pl-2">
+            <li className="flex items-start gap-2"><span className="text-yellow-300 mt-0.5">✦</span> Ana 2 utawa 4 larik</li>
+            <li className="flex items-start gap-2"><span className="text-yellow-300 mt-0.5">✦</span> Migunakake purwakanthi swara (rima)</li>
+            <li className="flex items-start gap-2"><span className="text-yellow-300 mt-0.5">✦</span> Isi cocog karo tema sing kapilih</li>
+          </ul>
+        </div>
+      </div>
+
+      {/* Pilih tema */}
+      <div>
+        <div className="mb-3 flex items-center justify-between">
+          <h3 className="text-base font-black text-white drop-shadow">
+            Pilih {needed} Tema
+          </h3>
+          <span
+            className="rounded-full px-3 py-1 text-sm font-black"
+            style={{
+              background: selected.length === needed ? level.color : 'rgba(255,255,255,0.2)',
+              color: 'white',
+            }}
+          >
+            {selected.length}/{needed} dipilih
+          </span>
+        </div>
+
+        <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
+          {level.themePool.map((theme) => {
+            const isSelected = selected.find(t => t.id === theme.id);
+            const isDisabled = !isSelected && selected.length >= needed;
+            const selIdx = selected.findIndex(t => t.id === theme.id);
+
+            return (
+              <button
+                key={theme.id}
+                type="button"
+                disabled={isDisabled}
+                onClick={() => toggle(theme)}
+                className={`group relative flex items-start gap-3 rounded-2xl border-2 p-4 text-left transition-all duration-200
+                  ${isSelected
+                    ? 'scale-[1.02] shadow-lg'
+                    : isDisabled
+                    ? 'cursor-not-allowed opacity-40'
+                    : 'hover:-translate-y-0.5 hover:shadow-md cursor-pointer'
+                  }`}
+                style={{
+                  borderColor: isSelected ? level.color : 'rgba(255,255,255,0.3)',
+                  background: isSelected
+                    ? `linear-gradient(135deg, ${level.color}22, ${level.color}11)`
+                    : 'rgba(255,255,255,0.1)',
+                  backdropFilter: 'blur(8px)',
+                }}
+              >
+                {/* Nomor urut / centang */}
+                <div
+                  className="flex size-8 shrink-0 items-center justify-center rounded-full text-sm font-black transition-all"
+                  style={{
+                    background: isSelected ? level.color : 'rgba(255,255,255,0.2)',
+                    color: 'white',
+                    boxShadow: isSelected ? `0 0 12px ${level.color}66` : 'none',
+                  }}
+                >
+                  {isSelected ? selIdx + 1 : <span className="text-white/60 text-xs">○</span>}
+                </div>
+
+                <div className="flex-1 min-w-0">
+                  <div className="flex items-center gap-2">
+                    <span className="text-xl leading-none" aria-hidden="true">{theme.emoji}</span>
+                    <span
+                      className="text-sm font-black"
+                      style={{ color: isSelected ? 'white' : 'rgba(255,255,255,0.9)' }}
+                    >
+                      {theme.theme}
+                    </span>
+                  </div>
+                  <p className="mt-1 text-xs font-semibold text-white/60 leading-snug">
+                    {theme.description}
+                  </p>
+                </div>
+
+                {isSelected && (
+                  <CheckCircle2 size={18} className="shrink-0 mt-0.5" style={{ color: level.color }} aria-hidden="true" />
+                )}
+              </button>
+            );
+          })}
+        </div>
+      </div>
+
+      {/* Tombol mulai */}
+      <button
+        type="button"
+        disabled={selected.length < needed}
+        onClick={handleStart}
+        className="flex w-full items-center justify-center gap-2 rounded-2xl py-4 text-lg font-black uppercase text-white shadow-xl transition-all hover:-translate-y-1 disabled:opacity-40 disabled:cursor-not-allowed disabled:translate-y-0"
+        style={{
+          background: selected.length === needed
+            ? `linear-gradient(135deg, ${level.color}, ${level.color}bb)`
+            : 'rgba(255,255,255,0.15)',
+          border: '2px solid rgba(255,255,255,0.3)',
+          boxShadow: selected.length === needed ? `0 8px 32px ${level.color}66` : 'none',
+        }}
+      >
+        {selected.length < needed
+          ? `Pilih ${needed - selected.length} tema maneh`
+          : <><Sparkles size={20} aria-hidden="true" /> Wis Siap, Mulai Nulis!</>
+        }
+      </button>
+    </div>
+  );
+}
+
 // ── Quiz screen (orchestrator) ───────────────────────────────────────────────
-function QuizScreen({ level, onFinish, onBack }) {
+// questions prop opsional — untuk tingkat 3 yang soalnya dipilih dinamis
+function QuizScreen({ level, questions: questionsOverride, onFinish, onBack }) {
   const [current, setCurrent] = useState(0);
   const [score, setScore] = useState(0);
   const scoreRef = useRef(0);
-  // Untuk compose: simpan poin per soal
   const pointsPerQuestion = useRef({});
 
-  const q = level.questions[current];
-  const isLast = current === level.questions.length - 1;
+  const questions = questionsOverride ?? level.questions;
+  const q = questions[current];
+  const isLast = current === questions.length - 1;
 
-  // Dipanggil saat jawaban fill benar
   const handleCorrectWithRef = () => {
     scoreRef.current += 1;
     setScore(scoreRef.current);
   };
 
-  // Dipanggil saat compose submit — simpan poin terbaik per soal
   const handleComposeScore = (points) => {
     const prev = pointsPerQuestion.current[q.id] ?? 0;
     if (points > prev) {
@@ -808,7 +984,7 @@ function QuizScreen({ level, onFinish, onBack }) {
       <QuizTopBar
         level={level}
         current={current}
-        total={level.questions.length}
+        total={questions.length}
         score={score}
         onBack={onBack}
       />
@@ -1174,13 +1350,13 @@ function ResultOverlay({ pct, levelColor, onDone }) {
 }
 
 // ── Result screen ────────────────────────────────────────────────────────────
-function ResultScreen({ level, score, onRetry, onBack }) {
+function ResultScreen({ level, score, maxScoreOverride, onRetry, onBack }) {
   const playClick = useClickSound();
   const { playApplause, playEncourage, playFailed } = useResultSound();
   const [showOverlay, setShowOverlay] = useState(true);
   const total = level.questions.length;
   const isCompose = level.questions[0]?.type === 'compose';
-  const maxScore = isCompose ? total * 10 : total;
+  const maxScore = maxScoreOverride ?? (isCompose ? total * 10 : total);
   const pct = maxScore > 0 ? Math.round((score / maxScore) * 100) : 0;
   const starsEarned = pct >= 80 ? 3 : pct >= 50 ? 2 : pct > 0 ? 1 : 0;
   const isSuccess = pct >= 70;
@@ -1383,10 +1559,23 @@ export function GamePage() {
   const [screen, setScreen] = useState('select');
   const [activeLevel, setActiveLevel] = useState(null);
   const [lastScore, setLastScore] = useState(0);
+  const [level3Questions, setLevel3Questions] = useState(null); // soal dinamis tingkat 3
   const [scores, setScores] = useLocalStorage('javanesia-game-scores', {});
 
   const handleSelectLevel = (level) => {
     setActiveLevel(level);
+    // Tingkat 3: tampilkan layar pilih tema dulu
+    if (level.type === 'theme-select') {
+      setScreen('theme-select');
+    } else {
+      setScreen('quiz');
+    }
+    window.scrollTo({ top: 0, behavior: 'smooth' });
+  };
+
+  // Dipanggil setelah user memilih tema di tingkat 3
+  const handleThemeStart = (questions) => {
+    setLevel3Questions(questions);
     setScreen('quiz');
     window.scrollTo({ top: 0, behavior: 'smooth' });
   };
@@ -1397,17 +1586,25 @@ export function GamePage() {
       ...prev,
       [activeLevel.id]: Math.max(prev[activeLevel.id] ?? 0, score),
     }));
+    setLevel3Questions(null);
     setScreen('result');
     window.scrollTo({ top: 0, behavior: 'smooth' });
   };
 
   const handleRetry = () => {
-    setScreen('quiz');
+    // Tingkat 3: kembali ke pilih tema lagi
+    if (activeLevel?.type === 'theme-select') {
+      setLevel3Questions(null);
+      setScreen('theme-select');
+    } else {
+      setScreen('quiz');
+    }
     window.scrollTo({ top: 0, behavior: 'smooth' });
   };
 
   const handleBack = () => {
     setActiveLevel(null);
+    setLevel3Questions(null);
     setScreen('select');
     window.scrollTo({ top: 0, behavior: 'smooth' });
   };
@@ -1416,6 +1613,7 @@ export function GamePage() {
     setScores({});
     setScreen('select');
     setActiveLevel(null);
+    setLevel3Questions(null);
   };
 
   return (
@@ -1423,11 +1621,32 @@ export function GamePage() {
       {screen === 'select' && (
         <LevelSelect scores={scores} onSelect={handleSelectLevel} onReset={handleReset} />
       )}
+      {screen === 'theme-select' && activeLevel && (
+        <ThemeSelectScreen
+          level={activeLevel}
+          onStart={handleThemeStart}
+          onBack={handleBack}
+        />
+      )}
       {screen === 'quiz' && activeLevel && (
-        <QuizScreen level={activeLevel} onFinish={handleFinish} onBack={handleBack} />
+        <QuizScreen
+          level={activeLevel}
+          questions={level3Questions ?? undefined}
+          onFinish={handleFinish}
+          onBack={activeLevel.type === 'theme-select'
+            ? () => { setLevel3Questions(null); setScreen('theme-select'); window.scrollTo({ top: 0, behavior: 'smooth' }); }
+            : handleBack
+          }
+        />
       )}
       {screen === 'result' && activeLevel && (
-        <ResultScreen level={activeLevel} score={lastScore} onRetry={handleRetry} onBack={handleBack} />
+        <ResultScreen
+          level={activeLevel}
+          score={lastScore}
+          maxScoreOverride={activeLevel.type === 'theme-select' ? activeLevel.selectCount * 10 : undefined}
+          onRetry={handleRetry}
+          onBack={handleBack}
+        />
       )}
     </div>
   );
