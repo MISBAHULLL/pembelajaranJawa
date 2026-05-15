@@ -15,6 +15,7 @@ import { MateriDetailPage } from './pages/MateriDetailPage.jsx';
 import { VideoPage } from './pages/VideoPage.jsx';
 import { GamePage } from './pages/GamePage.jsx';
 import { AboutPage } from './pages/AboutPage.jsx';
+import { GuidePage } from './pages/GuidePage.jsx';
 import { preloadPuterSpeech, prepareNaturalJavaneseSpeech } from './hooks/useNaturalJavaneseSpeech.js';
 import { getMateriNarrationText, materiNarrationTtsOptions } from './utils/materiSpeech.js';
 
@@ -115,6 +116,7 @@ export default function App() {
     video:           [{ label: 'Video Pembelajaran' }],
     game:            [{ label: 'Game Parikan' }],
     about:           [{ label: 'Tentang Pengembang' }],
+    guide:           [{ label: 'Petunjuk Penggunaan' }],
   };
   const crumbs = pageCrumbs[page] ?? [];
 
@@ -124,6 +126,7 @@ export default function App() {
     page === 'video'         ? 'Video Pembelajaran' :
     page === 'game'          ? 'Game Parikan' :
     page === 'about'         ? 'Tentang Pengembang' :
+    page === 'guide'         ? 'Petunjuk Penggunaan' :
     page === 'learning'      ? selectedLearning.title :
     page === 'materi-detail' ? activeMateri?.title ?? 'Materi' :
                                'Materi Parikan Jawa';
@@ -153,7 +156,11 @@ export default function App() {
           >
             <div key={page} className="page-enter">
               {page === 'home' && (
-                <HomePage menuItems={mainMenu} onChooseMenu={openMenu} />
+                <HomePage
+                  menuItems={mainMenu}
+                  onChooseMenu={openMenu}
+                  onOpenGuide={() => { setPage('guide'); window.scrollTo({ top: 0, behavior: 'smooth' }); }}
+                />
               )}
 
               {page === 'learning' && (
@@ -182,6 +189,8 @@ export default function App() {
               {page === 'game' && <GamePage />}
 
               {page === 'about' && <AboutPage />}
+
+              {page === 'guide' && <GuidePage />}
             </div>
           </SceneLayout>
 

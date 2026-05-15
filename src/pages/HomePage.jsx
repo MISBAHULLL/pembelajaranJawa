@@ -1,6 +1,15 @@
+import { HelpCircle } from 'lucide-react';
 import { MenuButton } from '../components/MenuButton.jsx';
+import { useClickSound } from '../hooks/useClickSound.js';
 
-export function HomePage({ menuItems, onChooseMenu }) {
+export function HomePage({ menuItems, onChooseMenu, onOpenGuide }) {
+  const playClick = useClickSound();
+
+  const handleOpenGuide = () => {
+    playClick();
+    onOpenGuide?.();
+  };
+
   return (
     <div className="mx-auto flex w-full max-w-[1200px] flex-col items-center justify-center gap-10 px-4 sm:gap-12 sm:px-6 lg:gap-14 lg:px-8">
       <header className="grid w-full max-w-4xl justify-items-center text-center">
@@ -10,6 +19,14 @@ export function HomePage({ menuItems, onChooseMenu }) {
         <p className="mt-4 animate-[fadeInUp_1s_ease-out] text-lg font-bold text-white/90 drop-shadow-md sm:text-xl">
           Sinau Basa Jawa kanthi Cara Menarik
         </p>
+        <button
+          type="button"
+          onClick={handleOpenGuide}
+          className="mt-5 inline-flex items-center gap-2 rounded-full border-2 border-white/90 bg-white/90 px-5 py-2 text-sm font-black uppercase tracking-wide text-orange-500 shadow-[0_5px_0_rgba(95,60,31,0.18),0_10px_20px_rgba(46,29,16,0.14)] transition hover:-translate-y-0.5 hover:bg-white focus-visible:outline-none focus-visible:ring-4 focus-visible:ring-orange-200"
+        >
+          <HelpCircle size={17} aria-hidden="true" />
+          Petunjuk
+        </button>
       </header>
 
       <nav 

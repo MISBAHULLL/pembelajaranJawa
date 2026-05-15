@@ -245,6 +245,7 @@ function ProgressBar({ current, total, color }) {
 
 // ── Level selection screen ───────────────────────────────────────────────────
 function LevelSelect({ scores, onSelect, onReset }) {
+  const [showGuide, setShowGuide] = useState(false);
   const playClick = useClickSound();
   const maxScore = gameLevels.reduce((sum, level) => sum + getLevelMaxScore(level), 0);
   const totalScore = gameLevels.reduce((sum, level) => (
@@ -269,6 +270,31 @@ function LevelSelect({ scores, onSelect, onReset }) {
         <p className="mt-2 text-base font-bold text-[#2e1d10] drop-shadow-sm">
           Uji kemampuanmu ngerti lan ngrakit parikan!
         </p>
+
+        <button
+          type="button"
+          onClick={() => { playClick(); setShowGuide((value) => !value); }}
+          className="mt-4 inline-flex items-center gap-2 rounded-full border-2 border-white/80 bg-white/90 px-4 py-2 text-xs font-black uppercase tracking-wide text-orange-600 shadow-md transition hover:-translate-y-0.5 hover:bg-white focus-visible:outline-none focus-visible:ring-4 focus-visible:ring-orange-200"
+        >
+          <Info size={14} aria-hidden="true" />
+          {showGuide ? 'Tutup Petunjuk' : 'Petunjuk Game'}
+        </button>
+
+        {showGuide && (
+          <div className="mx-auto mt-4 grid max-w-2xl gap-2 rounded-2xl border-2 border-orange-200 bg-white/92 p-4 text-left shadow-[0_10px_28px_rgba(78,45,21,0.14)] backdrop-blur-sm sm:grid-cols-2">
+            {[
+              'Miwiti saka Tingkat 1 kanggo nglengkapi parikan.',
+              'Skor minimal 70% bakal mbukak tingkat sabanjure.',
+              'Tingkat 2 lan 3 digunakake kanggo latihan nulis parikan dhewe.',
+              'Sawise submit, waca Hasil Penilaian lan Saran Guru kanggo revisi.',
+            ].map((guide) => (
+              <p key={guide} className="flex items-start gap-2 text-sm font-bold leading-relaxed text-[#5a3a22]">
+                <CheckCircle2 size={15} className="mt-0.5 shrink-0 text-green-500" aria-hidden="true" />
+                <span>{guide}</span>
+              </p>
+            ))}
+          </div>
+        )}
 
         {hasAnyScore && (
           <div className="mt-4 flex flex-wrap items-center justify-center gap-3">
