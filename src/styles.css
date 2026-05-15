@@ -354,6 +354,131 @@ button {
   }
 }
 
+/* ── Result screen animations ─────────────────────────────────────────────── */
+
+@keyframes resultOverlayIn {
+  0%   { opacity: 0; }
+  100% { opacity: 1; }
+}
+
+@keyframes resultBannerDrop {
+  0%   { opacity: 0; transform: translateY(-80px) scale(0.7) rotate(-4deg); }
+  55%  { opacity: 1; transform: translateY(12px) scale(1.08) rotate(1deg); }
+  75%  { transform: translateY(-6px) scale(0.97) rotate(-0.5deg); }
+  100% { transform: translateY(0) scale(1) rotate(0); }
+}
+
+@keyframes resultSubFadeUp {
+  0%   { opacity: 0; transform: translateY(20px); }
+  100% { opacity: 1; transform: translateY(0); }
+}
+
+@keyframes confettiFall {
+  0%   { transform: translateY(-20px) rotate(0deg); opacity: 1; }
+  100% { transform: translateY(110vh) rotate(720deg); opacity: 0; }
+}
+
+@keyframes confettiWiggle {
+  0%, 100% { transform: translateX(0); }
+  25%       { transform: translateX(12px); }
+  75%       { transform: translateX(-12px); }
+}
+
+@keyframes starBurst {
+  0%   { transform: scale(0) rotate(-30deg); opacity: 0; }
+  60%  { transform: scale(1.3) rotate(10deg); opacity: 1; }
+  100% { transform: scale(1) rotate(0deg); opacity: 1; }
+}
+
+@keyframes resultContentIn {
+  0%   { opacity: 0; transform: translateY(24px); }
+  100% { opacity: 1; transform: translateY(0); }
+}
+
+@keyframes pulseGlow {
+  0%, 100% { box-shadow: 0 0 0 0 rgba(255,255,255,0.4); }
+  50%       { box-shadow: 0 0 0 18px rgba(255,255,255,0); }
+}
+
+@keyframes floatUpFade {
+  0%   { opacity: 1; transform: translateY(0) scale(1); }
+  100% { opacity: 0; transform: translateY(-60px) scale(1.4); }
+}
+
+/* ripple rings dari tengah */
+@keyframes rippleRing {
+  0%   { transform: scale(0.2); opacity: 0.8; }
+  100% { transform: scale(3.5); opacity: 0; }
+}
+
+/* particle burst dari tengah ke luar */
+@keyframes particleBurst {
+  0%   { transform: translate(0, 0) scale(1); opacity: 1; }
+  100% { transform: translate(var(--px), var(--py)) scale(0); opacity: 0; }
+}
+
+/* shimmer teks */
+@keyframes textShimmer {
+  0%   { background-position: -200% center; }
+  100% { background-position: 200% center; }
+}
+
+/* icon pop dengan spring */
+@keyframes iconSpring {
+  0%   { transform: scale(0) rotate(-20deg); opacity: 0; }
+  45%  { transform: scale(1.35) rotate(8deg); opacity: 1; }
+  65%  { transform: scale(0.88) rotate(-4deg); }
+  80%  { transform: scale(1.1) rotate(2deg); }
+  100% { transform: scale(1) rotate(0deg); opacity: 1; }
+}
+
+/* bintang muncul satu per satu */
+@keyframes starPop {
+  0%   { transform: scale(0) rotate(-45deg); opacity: 0; }
+  55%  { transform: scale(1.4) rotate(10deg); opacity: 1; }
+  75%  { transform: scale(0.85) rotate(-5deg); }
+  100% { transform: scale(1) rotate(0deg); opacity: 1; }
+}
+
+/* progress bar fill */
+@keyframes progressFill {
+  0%   { width: 0%; }
+  100% { width: var(--target-width); }
+}
+
+/* score count up shimmer */
+@keyframes scoreReveal {
+  0%   { opacity: 0; transform: scale(0.5) translateY(30px); filter: blur(8px); }
+  60%  { opacity: 1; transform: scale(1.1) translateY(-4px); filter: blur(0); }
+  100% { transform: scale(1) translateY(0); }
+}
+
+/* card slide up glassmorphism */
+@keyframes cardSlideUp {
+  0%   { opacity: 0; transform: translateY(40px) scale(0.95); }
+  100% { opacity: 1; transform: translateY(0) scale(1); }
+}
+
+/* floating particles ambient */
+@keyframes ambientFloat {
+  0%   { transform: translateY(0) translateX(0) rotate(0deg); opacity: 0.6; }
+  33%  { transform: translateY(-20px) translateX(8px) rotate(120deg); opacity: 1; }
+  66%  { transform: translateY(-10px) translateX(-6px) rotate(240deg); opacity: 0.7; }
+  100% { transform: translateY(0) translateX(0) rotate(360deg); opacity: 0.6; }
+}
+
+/* overlay bg pulse */
+@keyframes bgPulse {
+  0%, 100% { opacity: 1; }
+  50%       { opacity: 0.85; }
+}
+
+/* glow ring spin */
+@keyframes glowSpin {
+  from { transform: rotate(0deg); }
+  to   { transform: rotate(360deg); }
+}
+
 @media (prefers-reduced-motion: reduce) {
   *,
   *::before,
