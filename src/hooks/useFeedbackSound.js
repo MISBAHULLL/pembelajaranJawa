@@ -1,3 +1,5 @@
+import { playGoogleJavaneseSpeech } from './useGoogleJavaneseSpeech.js';
+
 function speakFeedback(text) {
   try {
     if (!('speechSynthesis' in window) || !('SpeechSynthesisUtterance' in window)) {
@@ -8,15 +10,17 @@ function speakFeedback(text) {
 
     const utterance = new SpeechSynthesisUtterance(text);
     const voices = window.speechSynthesis.getVoices();
+    const javaneseVoice = voices.find((voice) => voice.lang?.toLowerCase().startsWith('jv'));
     const indonesianVoice = voices.find((voice) => voice.lang?.toLowerCase().startsWith('id'));
+    const selectedVoice = javaneseVoice || indonesianVoice;
 
-    if (indonesianVoice) {
-      utterance.voice = indonesianVoice;
+    if (selectedVoice) {
+      utterance.voice = selectedVoice;
     }
 
-    utterance.lang = indonesianVoice?.lang || 'id-ID';
+    utterance.lang = selectedVoice?.lang || 'jv-ID';
     utterance.rate = 0.95;
-    utterance.pitch = text === 'Benar' ? 1.08 : 0.9;
+    utterance.pitch = text === 'Bener' ? 1.08 : 0.9;
     utterance.volume = 1;
 
     window.speechSynthesis.speak(utterance);
@@ -27,11 +31,15 @@ function speakFeedback(text) {
 
 export function useFeedbackSound() {
   const playCorrect = () => {
-    speakFeedback('Benar');
+    playGoogleJavaneseSpeech('Bener', {
+      onError: () => speakFeedback('Bener'),
+    });
   };
 
   const playWrong = () => {
-    speakFeedback('Salah');
+    playGoogleJavaneseSpeech('Salah', {
+      onError: () => speakFeedback('Salah'),
+    });
   };
 
   return { playCorrect, playWrong };

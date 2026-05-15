@@ -70,12 +70,14 @@ button {
 
 .sky-scene::before {
   background-position: top left;
+  animation: cloudDriftLeft 42s linear infinite;
 }
 
 .sky-scene::after {
   transform: scaleX(-1);
   background-position: top right;
   opacity: 0.32;
+  animation: cloudDriftRight 58s linear infinite;
 }
 
 .mist {
@@ -84,6 +86,37 @@ button {
     radial-gradient(circle at 22% 54%, rgba(255, 255, 255, 0.88) 0 18%, transparent 28%),
     radial-gradient(circle at 48% 50%, rgba(255, 255, 255, 0.86) 0 20%, transparent 30%),
     radial-gradient(circle at 72% 60%, rgba(255, 255, 255, 0.9) 0 22%, transparent 32%);
+  animation: mistFloat 12s ease-in-out infinite alternate;
+}
+
+.nav-shell::before,
+.nav-shell::after {
+  position: absolute;
+  inset: 0;
+  z-index: -1;
+  content: "";
+  pointer-events: none;
+}
+
+.nav-shell::before {
+  background:
+    linear-gradient(90deg, rgba(255, 151, 0, 0.08), rgba(255, 255, 255, 0.62), rgba(255, 151, 0, 0.08)),
+    url("/assets/batik-border.svg");
+  background-position: 0 50%, 0 50%;
+  background-repeat: no-repeat, repeat-x;
+  background-size: 100% 100%, 260px 48px;
+  opacity: 0.28;
+  animation: navPatternDrift 28s linear infinite;
+}
+
+.nav-shell::after {
+  background: linear-gradient(115deg, transparent 0 34%, rgba(255, 255, 255, 0.42) 44%, transparent 56% 100%);
+  transform: translateX(-70%);
+  animation: navShine 9s ease-in-out infinite;
+}
+
+.nav-batik-accent {
+  animation: navAccentDrift 18s linear infinite;
 }
 
 .title-shadow-orange {
@@ -171,6 +204,65 @@ button {
   }
   to {
     background-position: 260px 0;
+  }
+}
+
+@keyframes cloudDriftLeft {
+  from {
+    background-position: 0 0;
+  }
+  to {
+    background-position: 480px 0;
+  }
+}
+
+@keyframes cloudDriftRight {
+  from {
+    background-position: 0 0;
+  }
+  to {
+    background-position: -480px 0;
+  }
+}
+
+@keyframes mistFloat {
+  from {
+    transform: translate3d(-10px, 0, 0) scale(1);
+  }
+  to {
+    transform: translate3d(18px, -10px, 0) scale(1.04);
+  }
+}
+
+@keyframes navPatternDrift {
+  from {
+    background-position: 0 50%, 0 50%;
+  }
+  to {
+    background-position: 0 50%, 260px 50%;
+  }
+}
+
+@keyframes navShine {
+  0%, 30% {
+    transform: translateX(-70%);
+    opacity: 0;
+  }
+  50% {
+    opacity: 0.75;
+  }
+  72%, 100% {
+    transform: translateX(70%);
+    opacity: 0;
+  }
+}
+
+@keyframes navAccentDrift {
+  from {
+    background-position: 0 0;
+  }
+  to {
+    background-position: 150px 0;
   }
 }
 

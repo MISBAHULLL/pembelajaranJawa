@@ -49,7 +49,8 @@ export const mainMenu = [
   {
     title: 'Tentang Pengembang',
     icon: 'info',
+    page: 'about',
     body:
-      'Aplikasi Javanesia digawe minangka media pembelajaran basa Jawa sing ringan, interaktif, lan bisa digunakake ing laptop maupun HP.',
+      'Deleng profil mahasiswa, dosen pembimbing, lan developer aplikasi Javanesia.',
   },
 ];

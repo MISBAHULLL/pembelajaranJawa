@@ -1,40 +1,71 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
 import { ChevronLeft, ChevronRight, Volume2, Square, BookOpen } from 'lucide-react';
 import { useClickSound } from '../hooks/useClickSound.js';
+import { playGoogleJavaneseSpeech } from '../hooks/useGoogleJavaneseSpeech.js';
 
 export function MateriDetailPage({ item, index, total, onNext, onPrev, hasNext, hasPrev, onBackToList }) {
   const [isPlaying, setIsPlaying] = useState(false);
   const [touchStart, setTouchStart] = useState(null);
   const [touchEnd, setTouchEnd] = useState(null);
+  const narrationRef = useRef(null);
   const playClick = useClickSound();
 
   const lines = item.example ? item.example.split('\n') : [];
 
-  // Stop speech when item changes
-  useEffect(() => {
-    window.speechSynthesis.cancel();
+  const stopNarration = () => {
+    narrationRef.current?.stop();
+    narrationRef.current = null;
+    window.speechSynthesis?.cancel();
     setIsPlaying(false);
+  };
+
+  const playSpeechFallback = (text) => {
+    if (!('speechSynthesis' in window) || !('SpeechSynthesisUtterance' in window)) {
+      setIsPlaying(false);
+      return;
+    }
+
+    window.speechSynthesis.cancel();
+    const utterance = new SpeechSynthesisUtterance(text);
+    const voices = window.speechSynthesis.getVoices();
+    const javaneseVoice = voices.find((voice) => voice.lang?.toLowerCase().startsWith('jv'));
+    const indonesianVoice = voices.find((voice) => voice.lang?.toLowerCase().startsWith('id'));
+    const selectedVoice = javaneseVoice || indonesianVoice;
+
+    if (selectedVoice) {
+      utterance.voice = selectedVoice;
+    }
+
+    utterance.lang = selectedVoice?.lang || 'jv-ID';
+    utterance.rate = 0.88;
+    utterance.pitch = 1;
+    utterance.onend = () => setIsPlaying(false);
+    utterance.onerror = () => setIsPlaying(false);
+    window.speechSynthesis.speak(utterance);
+    setIsPlaying(true);
+  };
+
+  // Stop narration when item changes
+  useEffect(() => {
+    stopNarration();
   }, [item]);
 
   // Cleanup on unmount
   useEffect(() => {
-    return () => window.speechSynthesis.cancel();
+    return () => stopNarration();
   }, []);
 
   const toggleSpeech = () => {
     playClick();
     if (isPlaying) {
-      window.speechSynthesis.cancel();
-      setIsPlaying(false);
+      stopNarration();
     } else {
-      window.speechSynthesis.cancel();
       const text = `${item.title}. ${item.body}${item.example ? '. Tuladha: ' + item.example : ''}`;
-      const utterance = new SpeechSynthesisUtterance(text);
-      utterance.lang = 'id-ID';
-      utterance.onend = () => setIsPlaying(false);
-      utterance.onerror = () => setIsPlaying(false);
-      window.speechSynthesis.speak(utterance);
-      setIsPlaying(true);
+      narrationRef.current = playGoogleJavaneseSpeech(text, {
+        onStart: () => setIsPlaying(true),
+        onEnd: () => setIsPlaying(false),
+        onError: () => playSpeechFallback(text),
+      });
     }
   };
 

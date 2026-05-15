@@ -14,6 +14,7 @@ import { MateriPage } from './pages/MateriPage.jsx';
 import { MateriDetailPage } from './pages/MateriDetailPage.jsx';
 import { VideoPage } from './pages/VideoPage.jsx';
 import { GamePage } from './pages/GamePage.jsx';
+import { AboutPage } from './pages/AboutPage.jsx';
 
 // Cek apakah splash sudah ditampilkan di sesi ini
 const hasSeenSplash = () => {
@@ -92,6 +93,7 @@ export default function App() {
     ],
     video:           [{ label: 'Video Pembelajaran' }],
     game:            [{ label: 'Game Parikan' }],
+    about:           [{ label: 'Tentang Pengembang' }],
   };
   const crumbs = pageCrumbs[page] ?? [];
 
@@ -100,6 +102,7 @@ export default function App() {
     page === 'home'          ? 'Javanesia' :
     page === 'video'         ? 'Video Pembelajaran' :
     page === 'game'          ? 'Game Parikan' :
+    page === 'about'         ? 'Tentang Pengembang' :
     page === 'learning'      ? selectedLearning.title :
     page === 'materi-detail' ? activeMateri?.title ?? 'Materi' :
                                'Materi Parikan Jawa';
@@ -156,6 +159,8 @@ export default function App() {
               {page === 'video' && <VideoPage videos={videoList} />}
 
               {page === 'game' && <GamePage />}
+
+              {page === 'about' && <AboutPage />}
             </div>
           </SceneLayout>
 
