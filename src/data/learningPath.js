@@ -1,0 +1,45 @@
+export const learningPathSteps = [
+  {
+    id: 'miwiti',
+    title: 'Miwiti',
+    subtitle: 'Kenali tujuan belajar dan alur kegiatan.',
+    actionLabel: 'Waca Tujuan',
+    targetPage: 'learning',
+    learningTitle: 'Tujuan Pembelajaran',
+  },
+  {
+    id: 'materi',
+    title: 'Materi',
+    subtitle: 'Baca materi parikan dari awal sampai akhir.',
+    actionLabel: 'Bukak Materi',
+    targetPage: 'materi',
+  },
+  {
+    id: 'latihan',
+    title: 'Latihan',
+    subtitle: 'Coba pahami contoh, sampiran, isi, lan rima.',
+    actionLabel: 'Latihan Saka Materi',
+    targetPage: 'materi',
+  },
+  {
+    id: 'game',
+    title: 'Game',
+    subtitle: 'Uji pemahaman lewat level game parikan.',
+    actionLabel: 'Main Game',
+    targetPage: 'game',
+  },
+  {
+    id: 'gawe-parikan',
+    title: 'Gawe Parikan',
+    subtitle: 'Latih nggawe parikan dhewe saka tantangan game.',
+    actionLabel: 'Coba Gawe',
+    targetPage: 'game',
+  },
+  {
+    id: 'hasil',
+    title: 'Hasil',
+    subtitle: 'Deleng ringkesan progres belajar.',
+    actionLabel: 'Deleng Hasil',
+    targetPage: 'path',
+  },
+];

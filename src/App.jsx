@@ -16,6 +16,7 @@ import { VideoPage } from './pages/VideoPage.jsx';
 import { GamePage } from './pages/GamePage.jsx';
 import { AboutPage } from './pages/AboutPage.jsx';
 import { GuidePage } from './pages/GuidePage.jsx';
+import { LearningPathPage } from './pages/LearningPathPage.jsx';
 
 // Cek apakah splash sudah ditampilkan di sesi ini
 const hasSeenSplash = () => {
@@ -70,6 +71,12 @@ export default function App() {
     window.scrollTo({ top: 0, behavior: 'smooth' });
   };
 
+  const openLearningPathTarget = ({ page: targetPage, learningItem }) => {
+    if (learningItem) setSelectedLearning(learningItem);
+    if (targetPage) setPage(targetPage);
+    window.scrollTo({ top: 0, behavior: 'smooth' });
+  };
+
   const handleNextMateri = () => {
     if (activeMateriIndex < materiList.length - 1) {
       setActiveMateriIndex(i => i + 1);
@@ -96,6 +103,7 @@ export default function App() {
     game:            [{ label: 'Game Parikan' }],
     about:           [{ label: 'Tentang Pengembang' }],
     guide:           [{ label: 'Petunjuk Penggunaan' }],
+    path:            [{ label: 'Alur Belajar' }],
   };
   const crumbs = pageCrumbs[page] ?? [];
 
@@ -106,6 +114,7 @@ export default function App() {
     page === 'game'          ? 'Game Parikan' :
     page === 'about'         ? 'Tentang Pengembang' :
     page === 'guide'         ? 'Petunjuk Penggunaan' :
+    page === 'path'          ? 'Alur Belajar' :
     page === 'learning'      ? selectedLearning.title :
     page === 'materi-detail' ? activeMateri?.title ?? 'Materi' :
                                'Materi Parikan Jawa';
@@ -139,6 +148,7 @@ export default function App() {
                   menuItems={mainMenu}
                   onChooseMenu={openMenu}
                   onOpenGuide={() => { setPage('guide'); window.scrollTo({ top: 0, behavior: 'smooth' }); }}
+                  onOpenPath={() => { setPage('path'); window.scrollTo({ top: 0, behavior: 'smooth' }); }}
                 />
               )}
 
@@ -170,6 +180,10 @@ export default function App() {
               {page === 'about' && <AboutPage />}
 
               {page === 'guide' && <GuidePage />}
+
+              {page === 'path' && (
+                <LearningPathPage onNavigate={openLearningPathTarget} />
+              )}
             </div>
           </SceneLayout>
 

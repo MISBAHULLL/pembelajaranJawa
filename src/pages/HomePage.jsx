@@ -1,13 +1,18 @@
-import { HelpCircle } from 'lucide-react';
+import { HelpCircle, Map } from 'lucide-react';
 import { MenuButton } from '../components/MenuButton.jsx';
 import { useClickSound } from '../hooks/useClickSound.js';
 
-export function HomePage({ menuItems, onChooseMenu, onOpenGuide }) {
+export function HomePage({ menuItems, onChooseMenu, onOpenGuide, onOpenPath }) {
   const playClick = useClickSound();
 
   const handleOpenGuide = () => {
     playClick();
     onOpenGuide?.();
+  };
+
+  const handleOpenPath = () => {
+    playClick();
+    onOpenPath?.();
   };
 
   return (
@@ -24,14 +29,24 @@ export function HomePage({ menuItems, onChooseMenu, onOpenGuide }) {
         <p className="mt-4 animate-[fadeInUp_1s_ease-out] text-lg font-bold text-white/90 drop-shadow-md sm:text-xl">
           Sinau Basa Jawa kanthi Cara Menarik
         </p>
-        <button
-          type="button"
-          onClick={handleOpenGuide}
-          className="mt-5 inline-flex items-center gap-2 rounded-full border-2 border-white/90 bg-white/90 px-5 py-2 text-sm font-black uppercase tracking-wide text-orange-500 shadow-[0_5px_0_rgba(95,60,31,0.18),0_10px_20px_rgba(46,29,16,0.14)] transition hover:-translate-y-0.5 hover:bg-white focus-visible:outline-none focus-visible:ring-4 focus-visible:ring-orange-200"
-        >
-          <HelpCircle size={17} aria-hidden="true" />
-          Petunjuk
-        </button>
+        <div className="mt-5 flex flex-wrap justify-center gap-3">
+          <button
+            type="button"
+            onClick={handleOpenPath}
+            className="inline-flex items-center gap-2 rounded-full border-2 border-white/95 bg-orange-500 px-5 py-2 text-sm font-black uppercase tracking-wide text-white shadow-[0_5px_0_rgba(95,60,31,0.18),0_10px_20px_rgba(46,29,16,0.14)] transition hover:-translate-y-0.5 hover:bg-orange-600 focus-visible:outline-none focus-visible:ring-4 focus-visible:ring-orange-200"
+          >
+            <Map size={17} aria-hidden="true" />
+            Alur Belajar
+          </button>
+          <button
+            type="button"
+            onClick={handleOpenGuide}
+            className="inline-flex items-center gap-2 rounded-full border-2 border-white/90 bg-white/90 px-5 py-2 text-sm font-black uppercase tracking-wide text-orange-500 shadow-[0_5px_0_rgba(95,60,31,0.18),0_10px_20px_rgba(46,29,16,0.14)] transition hover:-translate-y-0.5 hover:bg-white focus-visible:outline-none focus-visible:ring-4 focus-visible:ring-orange-200"
+          >
+            <HelpCircle size={17} aria-hidden="true" />
+            Petunjuk
+          </button>
+        </div>
       </header>
 
       <nav 
