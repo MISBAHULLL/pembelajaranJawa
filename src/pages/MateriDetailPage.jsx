@@ -37,15 +37,9 @@ export function MateriDetailPage({ item, index, total, onNext, onPrev, hasNext, 
     if (isPlaying || isPreparingAudio) {
       stopNarration();
     } else {
-<<<<<<< HEAD
       setAudioMessage('');
       narrationRef.current = playAudioFile(item.audioSrc, {
         onLoadStart: () => setIsPreparingAudio(true),
-=======
-      narrationRef.current = playNaturalJavaneseSpeech(narrationText, {
-        audioSrc: item.audioSrc,
-        onLoading: () => setIsPreparingAudio(true),
->>>>>>> 81158be57ea706fbc03e13a1f6c488a4628d7d30
         onStart: () => {
           setIsPreparingAudio(false);
           setIsPlaying(true);
