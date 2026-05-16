@@ -1,41 +1,31 @@
 import React from 'react';
-import { BookOpen, Gamepad2, Headphones, Home, PlayCircle, Sparkles, Star } from 'lucide-react';
+import { BookOpen, Gamepad2, Headphones, Home, Map, Sparkles } from 'lucide-react';
 
 const guideSteps = [
   {
-    icon: Sparkles,
-    title: 'Waca Capaian lan Tujuan',
-    body: 'Bukak Capaian Pembelajaran lan Tujuan Pembelajaran supaya ngerti apa sing bakal disinaoni ing Javanesia.',
+    icon: Map,
+    title: 'Miwiti Saka Alur Belajar',
+    body: 'Pencet tombol Alur Belajar ing halaman utama. Tindakake tahap sing wis disusun supaya sinau parikan luwih runtut.',
   },
   {
     icon: BookOpen,
-    title: 'Sinau Materi Parikan',
-    body: 'Mlebu menyang Materi Parikan, banjur waca materi saka Tegese Parikan nganti Tuladha Parikan Patang Gatra kanthi urut.',
+    title: 'Bukak Materi lan Komik',
+    body: 'Pilih Materi Parikan, waca komik pembuka, banjur lanjutake maca penjelasan lan tuladha ing saben materi.',
   },
   {
     icon: Headphones,
-    title: 'Rungokake Swara Materi',
-    body: 'Ing detail materi, pencet tombol swara kanggo ngrungokake penjelasan. Pencet maneh yen pengin mandhegake swara.',
-  },
-  {
-    icon: PlayCircle,
-    title: 'Tonton Video Pembelajaran',
-    body: 'Gunakake Video Pembelajaran kanggo nguwatake pangerten babagan tegese, struktur, lan tuladha parikan.',
+    title: 'Gunakake Tombol Swara',
+    body: 'Ing detail materi, pencet tombol swara kanggo ngrungokake audio. Pencet tombol mandheg yen pengin nyetop audio.',
   },
   {
     icon: Gamepad2,
-    title: 'Dolanan Game Parikan',
-    body: 'Miwiti saka Tingkat 1. Yen skor wis cukup, tingkat sabanjure bakal kebuka kanggo latihan nulis parikan.',
-  },
-  {
-    icon: Star,
-    title: 'Waca Saran Guru',
-    body: 'Nalika nulis parikan, waca Hasil Penilaian lan Saran Guru supaya ngerti bagian sing wis apik lan sing perlu direvisi.',
+    title: 'Latihan Ing Game',
+    body: 'Bukak Game Parikan kanggo latihan. Waca feedback lan saran guru supaya ngerti bagian sing perlu dibenerake.',
   },
   {
     icon: Home,
-    title: 'Bali Menyang Home',
-    body: 'Gunakake tombol Home utawa menu ndhuwur kanggo bali menyang halaman utama yen pengin milih menu liyane.',
+    title: 'Deleng Progres',
+    body: 'Bali menyang Alur Belajar kanggo nandhani tahap sing wis rampung lan ndeleng ringkesan progres sinau.',
   },
 ];
 
@@ -51,11 +41,11 @@ export function GuidePage() {
           Petunjuk Penggunaan
         </h1>
         <p className="mt-3 max-w-2xl text-sm font-bold leading-relaxed text-white/85">
-          Gunakake urutan iki supaya sinau parikan ing Javanesia luwih gampang lan runtut.
+          Petunjuk iki mung kanggo mbantu nggunakake tombol lan fitur utama. Urutan sinau utama ana ing Alur Belajar.
         </p>
       </header>
 
-      <section className="grid gap-4 sm:grid-cols-2" aria-label="Petunjuk penggunaan untuk siswa">
+      <section className="grid gap-4 md:grid-cols-2" aria-label="Petunjuk penggunaan untuk siswa">
         {guideSteps.map((step, index) => {
           const Icon = step.icon;
 
@@ -88,4 +78,3 @@ export function GuidePage() {
     </div>
   );
 }
-
