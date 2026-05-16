@@ -1,4 +1,4 @@
-const VERSION = '2026-05-16-v1';
+const VERSION = '2026-05-17-v2';
 const CORE_CACHE = `javanesia-core-${VERSION}`;
 const RUNTIME_CACHE = `javanesia-runtime-${VERSION}`;
 
@@ -19,6 +19,15 @@ const CORE_ASSETS = [
   '/assets/profile/mahasiswa.jpeg',
   '/assets/profile/dosen-pembimbing.jpeg',
   '/assets/profile/pengembang.jpeg',
+  '/assets/Komik/Comic_Materi1.png',
+  '/assets/Komik/Comic_Materi2.png',
+  '/assets/Komik/Comic_Materi3.png',
+  '/assets/Komik/Comic_Materi4.png',
+  '/assets/Komik/Comic_Materi5.png',
+  '/assets/Komik/Comic_Materi6.png',
+  '/assets/Komik/Comic_Materi7.png',
+  '/assets/Komik/Comic_Materi8.png',
+  '/assets/Komik/Comic_Materi9.png',
   '/assets/sounds/feedback-benar.mp3',
   '/assets/sounds/feedback-salah.mp3',
   '/assets/sounds/result-lulus.mp3',

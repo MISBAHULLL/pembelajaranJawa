@@ -3,6 +3,95 @@ import { ChevronLeft, ChevronRight, Volume2, Square, BookOpen, LoaderCircle } fr
 import { useClickSound } from '../hooks/useClickSound.js';
 import { playAudioFile } from '../hooks/useAudioFile.js';
 
+function getFloatingBubbleStyle(bubble, bubbleIndex) {
+  if (bubble.bubbleStyle) return bubble.bubbleStyle;
+
+  const speaker = bubble.speaker?.toLowerCase() ?? '';
+  if (speaker.includes('rara') || bubbleIndex === 1) {
+    return { left: '56%', top: '7%', width: '34%' };
+  }
+
+  return { left: '26%', top: '6%', width: '34%' };
+}
+
+function buildFallbackStimulus(index, title) {
+  return {
+    image: `/assets/Komik/Comic_Materi${index + 1}.png`,
+    bubbles: [
+      {
+        speaker: 'Dimas',
+        text: `Rara, sadurunge sinau ${title}, aku kudu nggatekake apa dhisik?`,
+      },
+      {
+        speaker: 'Rara',
+        text: 'Ayo delengen critane dhisik, banjur goleki pitakon penting saka gambar iki.',
+      },
+    ],
+    question: 'Miturutmu, apa sing bakal disinaoni saka crita iki?',
+  };
+}
+
+function StimulusComic({ stimulus, title }) {
+  if (!stimulus?.image) return null;
+
+  return (
+    <section
+      className="overflow-hidden rounded-[1.75rem] border-4 border-white/80 bg-white shadow-[0_8px_34px_rgba(46,29,16,0.18)]"
+      aria-label={`Komik pembuka materi ${title}`}
+    >
+      <div className="relative bg-[#e7f6ff]">
+        <img
+          src={stimulus.image}
+          alt={`Komik pembuka materi ${title}`}
+          className="aspect-video h-auto w-full object-cover"
+          loading="lazy"
+        />
+
+        <div className="pointer-events-none absolute inset-0 hidden sm:block">
+          {stimulus.bubbles?.map((bubble, bubbleIndex) => (
+            <div
+              key={`${bubble.speaker}-floating-${bubbleIndex}`}
+              className="comic-cloud-bubble comic-cloud-bubble-floating absolute"
+              style={getFloatingBubbleStyle(bubble, bubbleIndex)}
+            >
+              <span className="block text-[0.56rem] font-black uppercase tracking-[0.12em] text-orange-500 lg:text-[0.62rem]">
+                {bubble.speaker}
+              </span>
+              <p className="mt-1 text-[clamp(0.6rem,0.95vw,0.84rem)] font-black leading-snug text-[#3f2918]">
+                {bubble.text}
+              </p>
+            </div>
+          ))}
+        </div>
+      </div>
+
+      <div className="grid gap-3 bg-gradient-to-r from-sky-50 via-white to-orange-50 px-5 py-4 sm:hidden">
+        {stimulus.bubbles?.map((bubble, bubbleIndex) => (
+          <div key={`${bubble.speaker}-${bubbleIndex}`} className="comic-cloud-bubble comic-cloud-bubble-mobile">
+            <span className="block text-[0.66rem] font-black uppercase tracking-[0.12em] text-orange-500">
+              {bubble.speaker}
+            </span>
+            <p className="mt-1 text-sm font-black leading-snug text-[#3f2918] sm:text-[0.95rem]">
+              {bubble.text}
+            </p>
+          </div>
+        ))}
+      </div>
+
+      {stimulus.question && (
+        <div className="border-t-2 border-orange-100 bg-orange-50 px-5 py-4 sm:px-6">
+          <p className="text-xs font-black uppercase tracking-[0.14em] text-orange-500">
+            Pitakon Pemantik
+          </p>
+          <p className="mt-1 text-base font-black leading-snug text-[#6d3a14] sm:text-lg">
+            {stimulus.question}
+          </p>
+        </div>
+      )}
+    </section>
+  );
+}
+
 export function MateriDetailPage({ item, index, total, onNext, onPrev, hasNext, hasPrev, onBackToList }) {
   const [isPlaying, setIsPlaying] = useState(false);
   const [isPreparingAudio, setIsPreparingAudio] = useState(false);
@@ -13,6 +102,7 @@ export function MateriDetailPage({ item, index, total, onNext, onPrev, hasNext, 
   const playClick = useClickSound();
 
   const lines = item.example ? item.example.split('\n') : [];
+  const stimulus = item.stimulus ?? buildFallbackStimulus(index, item.title);
 
   const stopNarration = () => {
     narrationRef.current?.stop();
@@ -90,7 +180,7 @@ export function MateriDetailPage({ item, index, total, onNext, onPrev, hasNext, 
 
   return (
     <div
-      className="mx-auto flex w-full max-w-[780px] flex-col gap-6 px-4 py-2 sm:px-6"
+      className="mx-auto flex w-full max-w-[980px] flex-col gap-6 px-4 py-2 sm:px-6 lg:px-8"
       onTouchStart={handleTouchStart}
       onTouchMove={handleTouchMove}
       onTouchEnd={handleTouchEnd}
@@ -132,6 +222,8 @@ export function MateriDetailPage({ item, index, total, onNext, onPrev, hasNext, 
       </div>
 
       {/* ── Main content card ── */}
+      <StimulusComic stimulus={stimulus} title={item.title} />
+
       <article className="overflow-hidden rounded-3xl border-4 border-white/80 bg-white shadow-[0_8px_40px_rgba(46,29,16,0.18)]">
         {/* Header */}
         <header className="relative bg-gradient-to-r from-[#ff9b2f] to-[#ffba73] px-6 py-6 sm:px-8 sm:py-7">
