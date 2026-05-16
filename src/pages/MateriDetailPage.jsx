@@ -1,7 +1,14 @@
 import React, { useState, useEffect, useRef } from 'react';
-import { ChevronLeft, ChevronRight, Volume2, Square, BookOpen, LoaderCircle } from 'lucide-react';
+import { CheckCircle2, ChevronLeft, ChevronRight, ListChecks, RotateCcw, Volume2, Square, BookOpen, LoaderCircle, XCircle } from 'lucide-react';
+import { materiActivities } from '../data/materiActivities.js';
 import { useClickSound } from '../hooks/useClickSound.js';
 import { playAudioFile } from '../hooks/useAudioFile.js';
+import { useLocalStorage } from '../hooks/useLocalStorage.js';
+import {
+  LEARNING_PROGRESS_KEY,
+  initialLearningProgress,
+  normalizeLearningProgress,
+} from '../utils/learningProgress.js';
 
 function getFloatingBubbleStyle(bubble, bubbleIndex) {
   if (bubble.bubbleStyle) return bubble.bubbleStyle;
@@ -92,6 +99,271 @@ function StimulusComic({ stimulus, title }) {
   );
 }
 
+function isSameArray(left = [], right = []) {
+  return left.length === right.length && left.every((item, index) => item === right[index]);
+}
+
+function evaluateActivity(activity, answer) {
+  if (!activity) return false;
+
+  if (activity.type === 'single') {
+    return answer === activity.correctIndex;
+  }
+
+  if (activity.type === 'multi') {
+    const selected = [...(answer ?? [])].sort((a, b) => a - b);
+    const correct = [...activity.correctIndexes].sort((a, b) => a - b);
+    return isSameArray(selected, correct);
+  }
+
+  if (activity.type === 'classify') {
+    return activity.correct.every((category, index) => answer?.[index] === category);
+  }
+
+  if (activity.type === 'order') {
+    return isSameArray(answer ?? [], activity.correctOrder);
+  }
+
+  return false;
+}
+
+function hasActivityAnswer(activity, answer) {
+  if (!activity) return false;
+  if (activity.type === 'single') return Number.isInteger(answer);
+  if (activity.type === 'multi') return Array.isArray(answer) && answer.length > 0;
+  if (activity.type === 'classify') return Object.keys(answer ?? {}).length === activity.lines.length;
+  if (activity.type === 'order') return Array.isArray(answer) && answer.length === activity.correctOrder.length;
+  return false;
+}
+
+function getDefaultActivityAnswer(activity) {
+  return activity?.type === 'classify' ? {} : [];
+}
+
+function getSafeActivityAnswer(activity, answer) {
+  if (!activity) return answer;
+  if (activity.type === 'single') return Number.isInteger(answer) ? answer : null;
+  if (activity.type === 'multi' || activity.type === 'order') return Array.isArray(answer) ? answer : [];
+  if (activity.type === 'classify') return answer && !Array.isArray(answer) && typeof answer === 'object' ? answer : {};
+  return answer;
+}
+
+function MiniActivity({ activity }) {
+  const playClick = useClickSound();
+  const [answer, setAnswer] = useState(() => getDefaultActivityAnswer(activity));
+  const [checked, setChecked] = useState(false);
+
+  useEffect(() => {
+    setAnswer(getDefaultActivityAnswer(activity));
+    setChecked(false);
+  }, [activity]);
+
+  if (!activity) return null;
+
+  const safeAnswer = getSafeActivityAnswer(activity, answer);
+  const isCorrect = checked && evaluateActivity(activity, safeAnswer);
+  const isWrong = checked && !isCorrect;
+  const canCheck = hasActivityAnswer(activity, safeAnswer);
+
+  const handleCheck = () => {
+    playClick();
+    setChecked(true);
+  };
+
+  const handleReset = () => {
+    playClick();
+    setAnswer(getDefaultActivityAnswer(activity));
+    setChecked(false);
+  };
+
+  const toggleMulti = (optionIndex) => {
+    playClick();
+    setChecked(false);
+    setAnswer((current) => {
+      const currentAnswer = Array.isArray(current) ? current : [];
+      return currentAnswer.includes(optionIndex)
+        ? currentAnswer.filter((item) => item !== optionIndex)
+        : [...currentAnswer, optionIndex];
+    });
+  };
+
+  return (
+    <section className="mt-7 overflow-hidden rounded-2xl border-2 border-teal-200 bg-gradient-to-br from-teal-50 via-white to-orange-50 p-5 shadow-sm sm:p-6">
+      <div className="flex items-start gap-3">
+        <div className="grid size-11 shrink-0 place-items-center rounded-2xl bg-teal-100 text-teal-600 shadow-inner">
+          <ListChecks size={23} aria-hidden="true" />
+        </div>
+        <div>
+          <p className="text-xs font-black uppercase tracking-[0.15em] text-teal-600">
+            Coba Saiki
+          </p>
+          <h2 className="mt-1 text-xl font-black leading-tight text-[#3f2918]">
+            {activity.title}
+          </h2>
+          <p className="mt-1 text-sm font-bold leading-relaxed text-[#6b4a2d]">
+            {activity.prompt}
+          </p>
+        </div>
+      </div>
+
+      {activity.type === 'single' && (
+        <div className="mt-4 grid gap-2">
+          {activity.options.map((option, optionIndex) => (
+            <button
+              key={option}
+              type="button"
+              onClick={() => { playClick(); setAnswer(optionIndex); setChecked(false); }}
+              className={`rounded-2xl border-2 px-4 py-3 text-left text-sm font-black leading-snug transition hover:-translate-y-0.5 focus-visible:outline-none focus-visible:ring-4 focus-visible:ring-teal-200 ${
+                safeAnswer === optionIndex
+                  ? 'border-teal-400 bg-teal-100 text-teal-800'
+                  : 'border-white bg-white text-[#4f2912] hover:border-teal-200'
+              }`}
+            >
+              {option}
+            </button>
+          ))}
+        </div>
+      )}
+
+      {activity.type === 'multi' && (
+        <div className="mt-4 grid gap-2 sm:grid-cols-2">
+          {activity.options.map((option, optionIndex) => {
+            const selected = safeAnswer.includes(optionIndex);
+            return (
+              <button
+                key={option}
+                type="button"
+                onClick={() => toggleMulti(optionIndex)}
+                className={`rounded-2xl border-2 px-4 py-3 text-left text-sm font-black leading-snug transition hover:-translate-y-0.5 focus-visible:outline-none focus-visible:ring-4 focus-visible:ring-teal-200 ${
+                  selected
+                    ? 'border-teal-400 bg-teal-100 text-teal-800'
+                    : 'border-white bg-white text-[#4f2912] hover:border-teal-200'
+                }`}
+              >
+                {selected ? '✓ ' : ''}
+                {option}
+              </button>
+            );
+          })}
+        </div>
+      )}
+
+      {activity.type === 'classify' && (
+        <div className="mt-4 grid gap-3">
+          {activity.lines.map((line, lineIndex) => (
+            <div key={line} className="rounded-2xl border-2 border-white bg-white p-4">
+              <p className="text-base font-black leading-snug text-[#5d351d]">{line}</p>
+              <div className="mt-3 flex flex-wrap gap-2">
+                {activity.categories.map((category) => (
+                  <button
+                    key={category}
+                    type="button"
+                    onClick={() => {
+                      playClick();
+                      setChecked(false);
+                      setAnswer((current) => ({ ...(current ?? {}), [lineIndex]: category }));
+                    }}
+                    className={`rounded-full border-2 px-4 py-2 text-xs font-black uppercase tracking-wide transition hover:-translate-y-0.5 focus-visible:outline-none focus-visible:ring-4 focus-visible:ring-teal-200 ${
+                      safeAnswer?.[lineIndex] === category
+                        ? 'border-teal-400 bg-teal-100 text-teal-800'
+                        : 'border-orange-100 bg-orange-50 text-orange-700 hover:border-orange-200'
+                    }`}
+                  >
+                    {category}
+                  </button>
+                ))}
+              </div>
+            </div>
+          ))}
+        </div>
+      )}
+
+      {activity.type === 'order' && (
+        <div className="mt-4 grid gap-4">
+          <div className="rounded-2xl border-2 border-white bg-white p-4">
+            <p className="text-xs font-black uppercase tracking-[0.14em] text-orange-500">Urutanmu</p>
+            <div className="mt-3 grid gap-2">
+              {safeAnswer.length === 0 ? (
+                <p className="rounded-xl bg-orange-50 px-3 py-2 text-sm font-bold text-orange-700">
+                  Klik langkah ing ngisor iki kanggo nyusun urutan.
+                </p>
+              ) : (
+                safeAnswer.map((step, stepIndex) => (
+                  <div key={`${step}-${stepIndex}`} className="rounded-xl bg-teal-50 px-3 py-2 text-sm font-black text-teal-800">
+                    {stepIndex + 1}. {step}
+                  </div>
+                ))
+              )}
+            </div>
+          </div>
+
+          <div className="grid gap-2 sm:grid-cols-2">
+            {activity.items.map((step) => {
+              const selected = safeAnswer.includes(step);
+              return (
+                <button
+                  key={step}
+                  type="button"
+                  disabled={selected}
+                  onClick={() => {
+                    playClick();
+                    setChecked(false);
+                    setAnswer((current) => [...(current ?? []), step]);
+                  }}
+                  className={`rounded-2xl border-2 px-4 py-3 text-left text-sm font-black leading-snug transition focus-visible:outline-none focus-visible:ring-4 focus-visible:ring-teal-200 ${
+                    selected
+                      ? 'cursor-not-allowed border-stone-200 bg-stone-100 text-stone-400'
+                      : 'border-white bg-white text-[#4f2912] hover:-translate-y-0.5 hover:border-teal-200'
+                  }`}
+                >
+                  {step}
+                </button>
+              );
+            })}
+          </div>
+        </div>
+      )}
+
+      {checked && (
+        <div className={`mt-4 rounded-2xl border-2 px-4 py-3 text-sm font-black leading-relaxed ${
+          isCorrect
+            ? 'border-green-200 bg-green-50 text-green-700'
+            : 'border-amber-200 bg-amber-50 text-amber-700'
+        }`}>
+          <span className="inline-flex items-center gap-2">
+            {isCorrect ? <CheckCircle2 size={17} aria-hidden="true" /> : <XCircle size={17} aria-hidden="true" />}
+            {isCorrect ? activity.success : activity.retry}
+          </span>
+        </div>
+      )}
+
+      <div className="mt-4 flex flex-wrap gap-2">
+        <button
+          type="button"
+          onClick={handleCheck}
+          disabled={!canCheck}
+          className={`inline-flex items-center gap-2 rounded-full px-4 py-2 text-sm font-black uppercase tracking-wide shadow-sm transition focus-visible:outline-none focus-visible:ring-4 focus-visible:ring-teal-200 ${
+            canCheck
+              ? 'bg-teal-600 text-white hover:-translate-y-0.5 hover:bg-teal-700'
+              : 'cursor-not-allowed bg-stone-200 text-stone-500'
+          }`}
+        >
+          <CheckCircle2 size={16} aria-hidden="true" />
+          Cek Jawaban
+        </button>
+        <button
+          type="button"
+          onClick={handleReset}
+          className="inline-flex items-center gap-2 rounded-full border-2 border-orange-200 bg-white px-4 py-2 text-sm font-black uppercase tracking-wide text-orange-600 transition hover:-translate-y-0.5 hover:bg-orange-50 focus-visible:outline-none focus-visible:ring-4 focus-visible:ring-orange-200"
+        >
+          <RotateCcw size={16} aria-hidden="true" />
+          Coba Maneh
+        </button>
+      </div>
+    </section>
+  );
+}
+
 export function MateriDetailPage({ item, index, total, onNext, onPrev, hasNext, hasPrev, onBackToList }) {
   const [isPlaying, setIsPlaying] = useState(false);
   const [isPreparingAudio, setIsPreparingAudio] = useState(false);
@@ -100,9 +372,13 @@ export function MateriDetailPage({ item, index, total, onNext, onPrev, hasNext, 
   const [touchEnd, setTouchEnd] = useState(null);
   const narrationRef = useRef(null);
   const playClick = useClickSound();
+  const [learningProgress, setLearningProgress] = useLocalStorage(LEARNING_PROGRESS_KEY, initialLearningProgress);
 
   const lines = item.example ? item.example.split('\n') : [];
   const stimulus = item.stimulus ?? buildFallbackStimulus(index, item.title);
+  const miniActivity = item.activity ?? materiActivities[index];
+  const normalizedProgress = normalizeLearningProgress(learningProgress);
+  const isMateriCompleted = Boolean(normalizedProgress.completedMateri[item.title]);
 
   const stopNarration = () => {
     narrationRef.current?.stop();
@@ -116,6 +392,26 @@ export function MateriDetailPage({ item, index, total, onNext, onPrev, hasNext, 
     stopNarration();
     setAudioMessage('');
   }, [item]);
+
+  useEffect(() => {
+    setLearningProgress((current) => {
+      const normalized = normalizeLearningProgress(current);
+      const existingVisit = normalized.visitedMateri[item.title];
+
+      return {
+        ...normalized,
+        lastMateriIndex: index,
+        visitedMateri: {
+          ...normalized.visitedMateri,
+          [item.title]: existingVisit ?? {
+            title: item.title,
+            index,
+            firstVisitedAt: new Date().toISOString(),
+          },
+        },
+      };
+    });
+  }, [item.title, index]);
 
   // Cleanup on unmount
   useEffect(() => {
@@ -163,6 +459,38 @@ export function MateriDetailPage({ item, index, total, onNext, onPrev, hasNext, 
     playClick();
     onBackToList?.();
     window.scrollTo({ top: 0, behavior: 'smooth' });
+  };
+
+  const toggleMateriComplete = () => {
+    playClick();
+    setLearningProgress((current) => {
+      const normalized = normalizeLearningProgress(current);
+      const nextCompleted = { ...normalized.completedMateri };
+
+      if (nextCompleted[item.title]) {
+        delete nextCompleted[item.title];
+      } else {
+        nextCompleted[item.title] = {
+          title: item.title,
+          index,
+          completedAt: new Date().toISOString(),
+        };
+      }
+
+      return {
+        ...normalized,
+        lastMateriIndex: index,
+        visitedMateri: {
+          ...normalized.visitedMateri,
+          [item.title]: normalized.visitedMateri[item.title] ?? {
+            title: item.title,
+            index,
+            firstVisitedAt: new Date().toISOString(),
+          },
+        },
+        completedMateri: nextCompleted,
+      };
+    });
   };
 
   // Touch swipe support
@@ -304,6 +632,33 @@ export function MateriDetailPage({ item, index, total, onNext, onPrev, hasNext, 
               </div>
             </div>
           )}
+
+          <MiniActivity activity={miniActivity} />
+
+          <div className="mt-7 rounded-2xl border-2 border-green-200 bg-green-50 p-4 sm:flex sm:items-center sm:justify-between sm:gap-4">
+            <div>
+              <p className="text-xs font-black uppercase tracking-[0.14em] text-green-600">
+                Progress Belajar
+              </p>
+              <p className="mt-1 text-sm font-bold leading-relaxed text-[#4f2912]">
+                {isMateriCompleted
+                  ? 'Materi iki wis ditandai rampung. Progresmu bakal katon ing Alur Belajar.'
+                  : 'Tandai rampung yen wis maca materi, komik, lan tuladha kanthi lengkap.'}
+              </p>
+            </div>
+            <button
+              type="button"
+              onClick={toggleMateriComplete}
+              className={`mt-3 inline-flex w-full items-center justify-center gap-2 rounded-full px-4 py-2 text-sm font-black uppercase tracking-wide shadow-sm transition hover:-translate-y-0.5 focus-visible:outline-none focus-visible:ring-4 focus-visible:ring-green-200 sm:mt-0 sm:w-auto ${
+                isMateriCompleted
+                  ? 'bg-green-600 text-white hover:bg-green-700'
+                  : 'bg-white text-green-700 ring-2 ring-green-300 hover:bg-green-100'
+              }`}
+            >
+              <CheckCircle2 size={17} aria-hidden="true" />
+              {isMateriCompleted ? 'Wis Rampung' : 'Tandai Rampung'}
+            </button>
+          </div>
         </div>
       </article>
 

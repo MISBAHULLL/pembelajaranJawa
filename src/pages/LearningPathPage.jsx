@@ -1,9 +1,16 @@
 import React from 'react';
-import { CheckCircle2, Circle, Flag, Gamepad2, Lock, Map, RotateCcw, Sparkles } from 'lucide-react';
+import { BookOpen, CheckCircle2, Circle, Flag, Gamepad2, Lock, Map, RotateCcw, Sparkles, Trophy } from 'lucide-react';
 import { learningPathSteps } from '../data/learningPath.js';
 import { mainMenu } from '../data/mainMenu.js';
+import { materiList } from '../data/materi.js';
 import { useClickSound } from '../hooks/useClickSound.js';
 import { useLocalStorage } from '../hooks/useLocalStorage.js';
+import {
+  LEARNING_PROGRESS_KEY,
+  getGameProgressStats,
+  getMateriProgressStats,
+  initialLearningProgress,
+} from '../utils/learningProgress.js';
 
 const initialProgress = Object.fromEntries(learningPathSteps.map((step) => [step.id, false]));
 
@@ -23,8 +30,12 @@ function getLearningItem(title) {
 export function LearningPathPage({ onNavigate }) {
   const playClick = useClickSound();
   const [progress, setProgress] = useLocalStorage('javanesia-learning-path', initialProgress);
+  const [learningProgress, setLearningProgress] = useLocalStorage(LEARNING_PROGRESS_KEY, initialLearningProgress);
+  const [gameScores, setGameScores] = useLocalStorage('javanesia-game-scores', {});
   const completedCount = learningPathSteps.filter((step) => progress[step.id]).length;
   const progressPercent = Math.round((completedCount / learningPathSteps.length) * 100);
+  const materiStats = getMateriProgressStats(materiList, learningProgress);
+  const gameStats = getGameProgressStats(gameScores);
 
   const toggleStep = (stepId) => {
     playClick();
@@ -38,6 +49,8 @@ export function LearningPathPage({ onNavigate }) {
   const resetProgress = () => {
     playClick();
     setProgress(initialProgress);
+    setLearningProgress(initialLearningProgress);
+    setGameScores({});
   };
 
   const handleOpenStep = (step) => {
@@ -181,6 +194,44 @@ export function LearningPathPage({ onNavigate }) {
           </p>
 
           <div className="mt-5 grid gap-3">
+            <div className="rounded-2xl border-2 border-orange-100 bg-orange-50 p-4">
+              <div className="flex items-center justify-between gap-3">
+                <span className="inline-flex items-center gap-2 text-xs font-black uppercase tracking-[0.12em] text-orange-600">
+                  <BookOpen size={15} aria-hidden="true" />
+                  Materi
+                </span>
+                <span className="text-sm font-black text-[#5d351d]">
+                  {materiStats.completedCount}/{materiStats.total}
+                </span>
+              </div>
+              <div className="mt-2 h-2.5 overflow-hidden rounded-full bg-white">
+                <div
+                  className="h-full rounded-full bg-green-500 transition-all duration-500"
+                  style={{ width: `${materiStats.percent}%` }}
+                />
+              </div>
+              <p className="mt-2 text-xs font-bold text-[#7a5030]">
+                {materiStats.lastMateri ? `Terakhir dibuka: ${materiStats.lastMateri.title}` : 'Belum ada materi yang dibuka.'}
+              </p>
+            </div>
+
+            <div className="rounded-2xl border-2 border-orange-100 bg-orange-50 p-4">
+              <div className="flex items-center justify-between gap-3">
+                <span className="inline-flex items-center gap-2 text-xs font-black uppercase tracking-[0.12em] text-orange-600">
+                  <Trophy size={15} aria-hidden="true" />
+                  Game
+                </span>
+                <span className="text-sm font-black text-[#5d351d]">
+                  {gameStats.playedLevels} level
+                </span>
+              </div>
+              <p className="mt-2 text-xs font-bold leading-relaxed text-[#7a5030]">
+                Skor total terbaik: {gameStats.bestTotalScore}. Skor level tertinggi: {gameStats.bestSingleScore}.
+              </p>
+            </div>
+          </div>
+
+          <div className="mt-5 grid gap-3">
             {learningPathSteps.map((step) => (
               <div key={step.id} className="flex items-center justify-between gap-3 rounded-2xl bg-orange-50 px-4 py-3">
                 <span className="text-sm font-black text-[#5d351d]">{step.title}</span>
@@ -197,7 +248,7 @@ export function LearningPathPage({ onNavigate }) {
             className="mt-5 inline-flex w-full items-center justify-center gap-2 rounded-full border-2 border-orange-200 bg-white px-4 py-2 text-xs font-black uppercase tracking-wide text-orange-600 transition hover:border-orange-300 hover:bg-orange-50 focus-visible:outline-none focus-visible:ring-4 focus-visible:ring-orange-200"
           >
             <RotateCcw size={15} aria-hidden="true" />
-            Reset Progres
+            Reset Semua Progres
           </button>
         </aside>
       </section>
