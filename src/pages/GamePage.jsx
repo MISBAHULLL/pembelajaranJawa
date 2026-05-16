@@ -166,6 +166,90 @@ function buildComposeFeedback(text, keyword, scoring) {
   };
 }
 
+function getFillQuestionPrompt(q) {
+  return q.lines?.join('\n') ?? q.blank ?? 'Soal parikan';
+}
+
+function getReviewRecommendation(entry) {
+  if (entry.type === 'compose') {
+    const issues = entry.issues ?? [];
+    if (issues.includes('lineCount')) return 'Baleni Materi 3 Struktur Parikan supaya luwih paham sampiran lan isi.';
+    if (issues.includes('syllables')) return 'Baleni Materi 6 Panggone Ukara Ing Parikan supaya ukarane luwih ringkes lan trep.';
+    if (issues.includes('rhyme')) return 'Baleni Materi 2 Cirine Parikan supaya purwakanthi swara luwih mathuk.';
+    if (issues.includes('keyword')) return 'Baleni Materi 7 Cara Ngerakit Parikan supaya pesen lan temane luwih cetha.';
+    return 'Baleni Materi 7 Cara Ngerakit Parikan banjur coba gawe parikan maneh.';
+  }
+
+  const explanation = `${entry.explanation ?? ''}`.toLowerCase();
+  if (explanation.includes('purwakanthi') || explanation.includes('swara')) {
+    return 'Baleni Materi 2 Cirine Parikan supaya luwih paham swara pungkasan lan purwakanthi.';
+  }
+  if (explanation.includes('pitutur') || explanation.includes('sindiran')) {
+    return 'Baleni Materi 5 Paedah Parikan supaya luwih paham isi lan pesen parikan.';
+  }
+  return 'Baleni Materi 1 Tegese Parikan lan waca maneh tuladha-tuladhane.';
+}
+
+function buildFillReview(q, userAnswer, isCorrect, questionNum) {
+  const entry = {
+    id: q.id,
+    type: 'fill',
+    questionNum,
+    title: `Soal ${questionNum}`,
+    prompt: getFillQuestionPrompt(q),
+    userAnswer: userAnswer.trim(),
+    correctAnswer: q.answer,
+    isCorrect,
+    explanation: q.explanation ?? 'Coba gatekna maneh gegayutan swara lan makna ing parikan iki.',
+  };
+
+  return {
+    ...entry,
+    recommendation: isCorrect ? null : getReviewRecommendation(entry),
+  };
+}
+
+function buildComposeReview(q, text, scoring, teacherFeedback, questionNum) {
+  const issues = [];
+  if (!scoring.hasKeyword) issues.push('keyword');
+  if (!scoring.validLines) issues.push('lineCount');
+  if (!scoring.allSyllablesOk) issues.push('syllables');
+  if ((teacherFeedback?.suggestions ?? []).some((message) => message.toLowerCase().includes('swara pungkasan'))) {
+    issues.push('rhyme');
+  }
+
+  const entry = {
+    id: q.id,
+    type: 'compose',
+    questionNum,
+    title: `Parikan ${questionNum}`,
+    prompt: `Tema: ${q.theme}\nKata kunci: ${q.keyword}`,
+    userAnswer: text.trim(),
+    correctAnswer: 'Parikan becik: ana 2 utawa 4 larik, ngemot kata kunci, suku kata 8-12 saben larik, lan swara pungkasan selaras.',
+    isCorrect: scoring.points >= 8,
+    points: scoring.points,
+    maxPoints: 10,
+    explanation: teacherFeedback?.suggestions?.[0] ?? teacherFeedback?.strengths?.[0] ?? 'Parikanmu wis dinilai saka kata kunci, jumlah baris, suku kata, lan purwakanthi.',
+    issues,
+  };
+
+  return {
+    ...entry,
+    recommendation: scoring.points >= 8 ? null : getReviewRecommendation(entry),
+  };
+}
+
+function mergeReviewEntry(previousReview, entry) {
+  const withoutSameQuestion = previousReview.filter((item) => item.id !== entry.id);
+  const previousEntry = previousReview.find((item) => item.id === entry.id);
+
+  if (entry.type === 'compose' && previousEntry && (previousEntry.points ?? 0) > (entry.points ?? 0)) {
+    return [...withoutSameQuestion, previousEntry].sort((a, b) => a.questionNum - b.questionNum);
+  }
+
+  return [...withoutSameQuestion, entry].sort((a, b) => a.questionNum - b.questionNum);
+}
+
 function normalize(str) {
   return str
     .toLowerCase()
@@ -474,7 +558,7 @@ function QuizTopBar({ level, current, total, score, onBack }) {
 }
 
 // ── Fill question (isian) ────────────────────────────────────────────────────
-function FillQuestion({ q, level, questionNum, onCorrect, onWrong, onNext, isLast }) {
+function FillQuestion({ q, level, questionNum, onCorrect, onWrong, onReview, onNext, isLast }) {
   const [input, setInput] = useState('');
   const [status, setStatus] = useState('idle'); // 'idle' | 'correct' | 'wrong'
   const [emojiFeedback, setEmojiFeedback] = useState(null);
@@ -497,6 +581,8 @@ function FillQuestion({ q, level, questionNum, onCorrect, onWrong, onNext, isLas
   }, [q.id]);
 
   const handleSubmit = () => {
+    if (status !== 'idle') return;
+
     if (!input.trim()) {
       setWarning('Tulisen jawabanmu dhisik!');
       playWrong();
@@ -513,6 +599,7 @@ function FillQuestion({ q, level, questionNum, onCorrect, onWrong, onNext, isLas
 
     setWarning('');
     const isCorrect = checkAnswer(input, q.answer, q.answers);
+    onReview(buildFillReview(q, input, isCorrect, questionNum));
 
     if (isCorrect) {
       setStatus('correct');
@@ -691,7 +778,7 @@ function FillQuestion({ q, level, questionNum, onCorrect, onWrong, onNext, isLas
 }
 
 // ── Compose question (nulis parikan) ─────────────────────────────────────────
-function ComposeQuestion({ q, level, questionNum, onScore, onNext, isLast }) {
+function ComposeQuestion({ q, level, questionNum, onScore, onReview, onNext, isLast }) {
   const [text, setText] = useState('');
   const [result, setResult] = useState(null);
   const [teacherFeedback, setTeacherFeedback] = useState(null);
@@ -718,10 +805,12 @@ function ComposeQuestion({ q, level, questionNum, onScore, onNext, isLast }) {
       return;
     }
     const scoring = scoreCompose(text, q.keyword);
+    const feedback = buildComposeFeedback(text, q.keyword, scoring);
     setResult(scoring);
-    setTeacherFeedback(buildComposeFeedback(text, q.keyword, scoring));
+    setTeacherFeedback(feedback);
     setSubmitted(true);
     setEmojiFeedback(scoring.points === 10 ? 'correct' : scoring.points >= 6 ? 'great' : 'wrong');
+    onReview(buildComposeReview(q, text, scoring, feedback, questionNum));
     if (scoring.points > bestPoints) {
       setBestPoints(scoring.points);
       onScore(scoring.points);
@@ -1148,6 +1237,7 @@ function QuizScreen({ level, questions: questionsOverride, onFinish, onBack }) {
   const [score, setScore] = useState(0);
   const scoreRef = useRef(0);
   const pointsPerQuestion = useRef({});
+  const reviewRef = useRef([]);
 
   const questions = questionsOverride ?? level.questions;
   const q = questions[current];
@@ -1168,9 +1258,13 @@ function QuizScreen({ level, questions: questionsOverride, onFinish, onBack }) {
     }
   };
 
+  const handleReview = (entry) => {
+    reviewRef.current = mergeReviewEntry(reviewRef.current, entry);
+  };
+
   const handleNextWithFinish = () => {
     if (isLast) {
-      onFinish(scoreRef.current);
+      onFinish(scoreRef.current, reviewRef.current);
     } else {
       setCurrent(c => c + 1);
     }
@@ -1195,6 +1289,7 @@ function QuizScreen({ level, questions: questionsOverride, onFinish, onBack }) {
           questionNum={current + 1}
           onCorrect={handleCorrectWithRef}
           onWrong={() => {}}
+          onReview={handleReview}
           onNext={handleNextWithFinish}
           isLast={isLast}
         />
@@ -1207,6 +1302,7 @@ function QuizScreen({ level, questions: questionsOverride, onFinish, onBack }) {
           level={level}
           questionNum={current + 1}
           onScore={handleComposeScore}
+          onReview={handleReview}
           onNext={handleNextWithFinish}
           isLast={isLast}
         />
@@ -1548,7 +1644,7 @@ function ResultOverlay({ pct, levelColor, onDone }) {
 }
 
 // ── Result screen ────────────────────────────────────────────────────────────
-function ResultScreen({ level, score, onRetry, onBack }) {
+function ResultScreen({ level, score, review = [], onRetry, onBack }) {
   const playClick = useClickSound();
   const { playApplause, playEncourage, playFailed } = useResultSound();
   const [showOverlay, setShowOverlay] = useState(true);
@@ -1558,6 +1654,11 @@ function ResultScreen({ level, score, onRetry, onBack }) {
   const starsEarned = pct >= 80 ? 3 : pct >= 50 ? 2 : pct > 0 ? 1 : 0;
   const isSuccess = pct >= 70;
   const isCompose = level.type === 'theme-select' || level.questions[0]?.type === 'compose';
+  const reviewItems = Array.isArray(review) ? review : [];
+  const wrongReviews = reviewItems.filter((item) => !item.isCorrect);
+  const recommendations = Array.from(
+    new Set(wrongReviews.map((item) => item.recommendation).filter(Boolean))
+  );
 
   const resultFeedback = pct === 100
     ? { msg: 'Luar biasa! Sampurna! 🏆', sub: 'Kowe pancen jago banget!' }
@@ -1586,7 +1687,7 @@ function ResultScreen({ level, score, onRetry, onBack }) {
       )}
 
       <div
-        className="mx-auto flex w-full max-w-[560px] flex-col items-center gap-5 px-4 py-2 text-center"
+        className="mx-auto flex w-full max-w-[760px] flex-col items-center gap-5 px-4 py-2 text-center"
         style={!showOverlay ? { animation: 'resultContentIn 0.4s ease-out both' } : { opacity: 0, pointerEvents: 'none' }}
       >
         {/* ── Ikon + glow ── */}
@@ -1696,6 +1797,102 @@ function ResultScreen({ level, score, onRetry, onBack }) {
           <p className="mt-1 text-sm font-semibold text-white/70">{resultFeedback.sub}</p>
         </div>
 
+        {/* Detail evaluasi */}
+        {reviewItems.length > 0 && (
+          <div
+            className="w-full rounded-3xl p-4 text-left sm:p-5"
+            style={{
+              background: 'rgba(255,255,255,0.14)',
+              backdropFilter: 'blur(20px)',
+              border: '1px solid rgba(255,255,255,0.24)',
+              boxShadow: '0 8px 32px rgba(0,0,0,0.2), inset 0 1px 0 rgba(255,255,255,0.22)',
+              ...s(0.33),
+            }}
+          >
+            <div className="flex flex-col gap-1 sm:flex-row sm:items-end sm:justify-between">
+              <div>
+                <p className="text-xs font-black uppercase tracking-widest text-white/55">Tinjauan Jawaban</p>
+                <h3 className="text-xl font-black text-white">
+                  {wrongReviews.length > 0 ? `${wrongReviews.length} bagian perlu dibenahi` : 'Kabeh jawaban wis apik'}
+                </h3>
+              </div>
+              <span className="rounded-full bg-white/15 px-3 py-1 text-xs font-black text-white/75">
+                {reviewItems.length - wrongReviews.length}/{reviewItems.length} tuntas
+              </span>
+            </div>
+
+            {wrongReviews.length === 0 ? (
+              <div className="mt-4 rounded-2xl border border-emerald-300/40 bg-emerald-400/15 px-4 py-3 text-sm font-bold leading-relaxed text-emerald-50">
+                Ora ana jawaban salah. Terusna latihan gawe parikan supaya luwih lancar lan kreatif.
+              </div>
+            ) : (
+              <div className="mt-4 grid gap-3">
+                {wrongReviews.map((item) => (
+                  <article
+                    key={item.id}
+                    className="rounded-2xl border border-white/18 bg-white/92 p-4 text-[#2e1d10] shadow-lg"
+                  >
+                    <div className="mb-3 flex flex-wrap items-center justify-between gap-2">
+                      <span className="rounded-full bg-red-100 px-3 py-1 text-xs font-black uppercase tracking-wide text-red-700">
+                        {item.title}
+                      </span>
+                      {item.type === 'compose' && (
+                        <span className="rounded-full bg-amber-100 px-3 py-1 text-xs font-black text-amber-800">
+                          Skor {item.points}/{item.maxPoints}
+                        </span>
+                      )}
+                    </div>
+
+                    <div className="grid gap-3 text-sm font-semibold leading-relaxed">
+                      <div>
+                        <p className="mb-1 text-[0.68rem] font-black uppercase tracking-widest text-orange-500">Soal</p>
+                        <p className="whitespace-pre-line rounded-xl bg-orange-50 px-3 py-2">{item.prompt}</p>
+                      </div>
+                      <div className="grid gap-3 sm:grid-cols-2">
+                        <div>
+                          <p className="mb-1 text-[0.68rem] font-black uppercase tracking-widest text-red-500">Jawabanmu</p>
+                          <p className="whitespace-pre-line rounded-xl bg-red-50 px-3 py-2 text-red-800">
+                            {item.userAnswer || 'Durung ana jawaban'}
+                          </p>
+                        </div>
+                        <div>
+                          <p className="mb-1 text-[0.68rem] font-black uppercase tracking-widest text-green-600">
+                            {item.type === 'compose' ? 'Kriteria Benar' : 'Jawaban Benar'}
+                          </p>
+                          <p className="whitespace-pre-line rounded-xl bg-green-50 px-3 py-2 text-green-800">
+                            {item.correctAnswer}
+                          </p>
+                        </div>
+                      </div>
+                      <div>
+                        <p className="mb-1 text-[0.68rem] font-black uppercase tracking-widest text-sky-600">Alasan</p>
+                        <p className="rounded-xl bg-sky-50 px-3 py-2 text-sky-900">{item.explanation}</p>
+                      </div>
+                      {item.recommendation && (
+                        <div>
+                          <p className="mb-1 text-[0.68rem] font-black uppercase tracking-widest text-amber-600">Rekomendasi Ngulang</p>
+                          <p className="rounded-xl bg-amber-50 px-3 py-2 text-amber-900">{item.recommendation}</p>
+                        </div>
+                      )}
+                    </div>
+                  </article>
+                ))}
+              </div>
+            )}
+
+            {recommendations.length > 1 && (
+              <div className="mt-4 rounded-2xl border border-yellow-300/35 bg-yellow-300/12 px-4 py-3 text-sm font-bold leading-relaxed text-yellow-50">
+                <p className="mb-2 text-xs font-black uppercase tracking-widest text-yellow-200">Ringkesan Materi Baleni</p>
+                <ul className="grid gap-1.5">
+                  {recommendations.map((item) => (
+                    <li key={item}>- {item}</li>
+                  ))}
+                </ul>
+              </div>
+            )}
+          </div>
+        )}
+
         {/* ── Parikan hadiah ── */}
         {pct >= 80 && (
           <div
@@ -1757,6 +1954,7 @@ export function GamePage() {
   const [screen, setScreen] = useState('select');
   const [activeLevel, setActiveLevel] = useState(null);
   const [lastScore, setLastScore] = useState(0);
+  const [lastReview, setLastReview] = useState([]);
   const [level3Questions, setLevel3Questions] = useState(null); // soal dinamis tingkat 3
   const [scores, setScores] = useLocalStorage('javanesia-game-scores', {});
   const { prepareResultSounds, playApplause, playEncourage, playFailed } = useResultSound();
@@ -1764,6 +1962,7 @@ export function GamePage() {
   const handleSelectLevel = (level) => {
     prepareResultSounds();
     setActiveLevel(level);
+    setLastReview([]);
     // Tingkat 3: tampilkan layar pilih tema dulu
     if (level.type === 'theme-select') {
       setScreen('theme-select');
@@ -1777,16 +1976,18 @@ export function GamePage() {
   const handleThemeStart = (questions) => {
     prepareResultSounds();
     setLevel3Questions(questions);
+    setLastReview([]);
     setScreen('quiz');
     window.scrollTo({ top: 0, behavior: 'smooth' });
   };
 
-  const handleFinish = (score) => {
+  const handleFinish = (score, review = []) => {
     const maxScore = getLevelMaxScore(activeLevel);
     const finalScore = clampScore(score, maxScore);
     const pct = maxScore > 0 ? Math.round((finalScore / maxScore) * 100) : 0;
     
     setLastScore(finalScore);
+    setLastReview(review);
     setScores((prev) => ({
       ...prev,
       [activeLevel.id]: Math.max(prev[activeLevel.id] ?? 0, finalScore),
@@ -1810,6 +2011,7 @@ export function GamePage() {
 
   const handleRetry = () => {
     // Tingkat 3: kembali ke pilih tema lagi
+    setLastReview([]);
     if (activeLevel?.type === 'theme-select') {
       setLevel3Questions(null);
       setScreen('theme-select');
@@ -1821,6 +2023,7 @@ export function GamePage() {
 
   const handleBack = () => {
     setActiveLevel(null);
+    setLastReview([]);
     setLevel3Questions(null);
     setScreen('select');
     window.scrollTo({ top: 0, behavior: 'smooth' });
@@ -1830,6 +2033,7 @@ export function GamePage() {
     setScores({});
     setScreen('select');
     setActiveLevel(null);
+    setLastReview([]);
     setLevel3Questions(null);
   };
 
@@ -1851,7 +2055,7 @@ export function GamePage() {
           questions={level3Questions ?? undefined}
           onFinish={handleFinish}
           onBack={activeLevel.type === 'theme-select'
-            ? () => { setLevel3Questions(null); setScreen('theme-select'); window.scrollTo({ top: 0, behavior: 'smooth' }); }
+            ? () => { setLevel3Questions(null); setLastReview([]); setScreen('theme-select'); window.scrollTo({ top: 0, behavior: 'smooth' }); }
             : handleBack
           }
         />
@@ -1860,6 +2064,7 @@ export function GamePage() {
         <ResultScreen
           level={activeLevel}
           score={lastScore}
+          review={lastReview}
           onRetry={handleRetry}
           onBack={handleBack}
         />
