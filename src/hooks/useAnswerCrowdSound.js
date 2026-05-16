@@ -1,3 +1,6 @@
+const CORRECT_CROWD_SOUND_SRC = '/assets/sounds/bener.mp3';
+const WRONG_CROWD_SOUND_SRC = '/assets/sounds/salah.mp3';
+
 function createAudioContext() {
   const ctx = new (window.AudioContext || window.webkitAudioContext)();
   ctx.resume?.();
@@ -57,55 +60,74 @@ function playTone(ctx, { delay, duration, frequency, volume, type = 'sine' }) {
   oscillator.stop(startAt + duration);
 }
 
+function playSoundEffect(src, onError) {
+  try {
+    const audio = new Audio(src);
+    audio.preload = 'auto';
+    audio.volume = 1;
+    audio.play().catch(onError);
+  } catch {
+    onError?.();
+  }
+}
+
+function playGeneratedCorrectCrowd() {
+  try {
+    const ctx = createAudioContext();
+    [0, 0.05, 0.1, 0.17, 0.24, 0.33, 0.43, 0.54, 0.66].forEach((delay) => {
+      playNoiseBurst(ctx, {
+        delay,
+        duration: 0.16,
+        volume: 0.58,
+        frequency: 1200 + Math.random() * 1300,
+        q: 0.7,
+      });
+    });
+    closeLater(ctx, 1.15);
+  } catch {
+    // Ignore unsupported Web Audio API.
+  }
+}
+
+function playGeneratedWrongCrowd() {
+  try {
+    const ctx = createAudioContext();
+    [0, 0.06, 0.13, 0.22, 0.32, 0.44, 0.58].forEach((delay) => {
+      playNoiseBurst(ctx, {
+        delay,
+        duration: 0.22,
+        volume: 0.2,
+        frequency: 850 + Math.random() * 850,
+        q: 0.45,
+      });
+    });
+    [
+      { delay: 0.02, frequency: 520 },
+      { delay: 0.12, frequency: 660 },
+      { delay: 0.24, frequency: 580 },
+      { delay: 0.38, frequency: 720 },
+    ].forEach((note) => {
+      playTone(ctx, {
+        delay: note.delay,
+        duration: 0.22,
+        frequency: note.frequency,
+        volume: 0.07,
+        type: 'triangle',
+      });
+    });
+    closeLater(ctx, 1.05);
+  } catch {
+    // Ignore unsupported Web Audio API.
+  }
+}
+
 export function useAnswerCrowdSound() {
   const playCorrectCrowd = () => {
-    try {
-      const ctx = createAudioContext();
-      [0, 0.05, 0.1, 0.17, 0.24, 0.33, 0.43, 0.54, 0.66].forEach((delay) => {
-        playNoiseBurst(ctx, {
-          delay,
-          duration: 0.16,
-          volume: 0.58,
-          frequency: 1200 + Math.random() * 1300,
-          q: 0.7,
-        });
-      });
-      closeLater(ctx, 1.15);
-    } catch {
-      // Ignore unsupported Web Audio API.
-    }
+    playSoundEffect(CORRECT_CROWD_SOUND_SRC, playGeneratedCorrectCrowd);
   };
 
   const playWrongCrowd = () => {
-    try {
-      const ctx = createAudioContext();
-      [0, 0.06, 0.13, 0.22, 0.32, 0.44, 0.58].forEach((delay) => {
-        playNoiseBurst(ctx, {
-          delay,
-          duration: 0.22,
-          volume: 0.2,
-          frequency: 850 + Math.random() * 850,
-          q: 0.45,
-        });
-      });
-      [
-        { delay: 0.02, frequency: 520 },
-        { delay: 0.12, frequency: 660 },
-        { delay: 0.24, frequency: 580 },
-        { delay: 0.38, frequency: 720 },
-      ].forEach((note) => {
-        playTone(ctx, {
-          delay: note.delay,
-          duration: 0.22,
-          frequency: note.frequency,
-          volume: 0.07,
-          type: 'triangle',
-        });
-      });
-      closeLater(ctx, 1.05);
-    } catch {
-      // Ignore unsupported Web Audio API.
-    }
+    playSoundEffect(WRONG_CROWD_SOUND_SRC, playGeneratedWrongCrowd);
   };
 
   return { playCorrectCrowd, playWrongCrowd };

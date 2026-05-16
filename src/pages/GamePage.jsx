@@ -191,7 +191,30 @@ function detectIssue(userInput) {
 
 // ── Star rating display ──────────────────────────────────────────────────────
 function FeedbackEmoji({ type }) {
-  if (!type) return null;
+  const [drops, setDrops] = useState([]);
+
+  useEffect(() => {
+    if (!type) {
+      setDrops([]);
+      return;
+    }
+
+    // Gawe rintik hujan emoji
+    const numDrops = 35;
+    const newDrops = Array.from({ length: numDrops }).map((_, i) => ({
+      id: i,
+      left: Math.random() * 100,
+      duration: 1.5 + Math.random() * 1.5, // 1.5s - 3.0s
+      delay: Math.random() * 0.5,
+      size: 24 + Math.random() * 24, // 24px - 48px
+    }));
+    setDrops(newDrops);
+
+    const timer = setTimeout(() => setDrops([]), 3500);
+    return () => clearTimeout(timer);
+  }, [type]);
+
+  if (!type || drops.length === 0) return null;
 
   const variants = {
     correct: { emoji: '😄', label: 'Bener!', className: 'border-green-300 bg-green-50 text-green-700' },
@@ -201,15 +224,30 @@ function FeedbackEmoji({ type }) {
   const item = variants[type] ?? variants.wrong;
 
   return (
-    <div className="pointer-events-none fixed inset-0 z-50 flex items-center justify-between overflow-hidden px-0 sm:px-4">
-      <div className={`animate-[feedbackSlideLeft_1.45s_ease-out_both] rounded-r-[2rem] border-y-4 border-r-4 px-5 py-5 text-center shadow-[0_22px_60px_rgba(46,29,16,0.28)] sm:rounded-[2rem] sm:border-4 sm:px-7 ${item.className}`}>
-        <div className="text-6xl leading-none drop-shadow-sm sm:text-7xl" aria-hidden="true">{item.emoji}</div>
-        <p className="mt-2 text-xl font-black uppercase tracking-wide sm:text-2xl">{item.label}</p>
+    <div className="pointer-events-none fixed inset-0 z-50 overflow-hidden">
+      {/* Label tengah */}
+      <div className="absolute inset-0 flex items-center justify-center" style={{ animation: 'fadeOut 0.5s ease-out 1.5s both' }}>
+        <div className={`animate-[feedbackPop_0.6s_ease-out_both] rounded-[2rem] border-4 px-8 py-6 text-center shadow-[0_22px_60px_rgba(46,29,16,0.28)] sm:px-12 sm:py-8 ${item.className}`}>
+          <div className="text-7xl leading-none drop-shadow-sm sm:text-8xl" aria-hidden="true">{item.emoji}</div>
+          <p className="mt-3 text-3xl font-black uppercase tracking-wide sm:text-4xl">{item.label}</p>
+        </div>
       </div>
-      <div className={`animate-[feedbackSlideRight_1.45s_ease-out_both] rounded-l-[2rem] border-y-4 border-l-4 px-5 py-5 text-center shadow-[0_22px_60px_rgba(46,29,16,0.28)] sm:rounded-[2rem] sm:border-4 sm:px-7 ${item.className}`}>
-        <div className="text-6xl leading-none drop-shadow-sm sm:text-7xl" aria-hidden="true">{item.emoji}</div>
-        <p className="mt-2 text-xl font-black uppercase tracking-wide sm:text-2xl">{item.label}</p>
-      </div>
+
+      {/* Efek hujan emoji */}
+      {drops.map((drop) => (
+        <div
+          key={drop.id}
+          className="absolute -top-16 opacity-0"
+          style={{
+            left: `${drop.left}%`,
+            fontSize: `${drop.size}px`,
+            animation: `rainFall ${drop.duration}s linear ${drop.delay}s forwards`,
+          }}
+          aria-hidden="true"
+        >
+          {item.emoji}
+        </div>
+      ))}
     </div>
   );
 }
@@ -1721,8 +1759,10 @@ export function GamePage() {
   const [lastScore, setLastScore] = useState(0);
   const [level3Questions, setLevel3Questions] = useState(null); // soal dinamis tingkat 3
   const [scores, setScores] = useLocalStorage('javanesia-game-scores', {});
+  const { prepareResultSounds, playApplause, playEncourage, playFailed } = useResultSound();
 
   const handleSelectLevel = (level) => {
+    prepareResultSounds();
     setActiveLevel(level);
     // Tingkat 3: tampilkan layar pilih tema dulu
     if (level.type === 'theme-select') {
@@ -1735,6 +1775,7 @@ export function GamePage() {
 
   // Dipanggil setelah user memilih tema di tingkat 3
   const handleThemeStart = (questions) => {
+    prepareResultSounds();
     setLevel3Questions(questions);
     setScreen('quiz');
     window.scrollTo({ top: 0, behavior: 'smooth' });
@@ -1743,6 +1784,8 @@ export function GamePage() {
   const handleFinish = (score) => {
     const maxScore = getLevelMaxScore(activeLevel);
     const finalScore = clampScore(score, maxScore);
+    const pct = maxScore > 0 ? Math.round((finalScore / maxScore) * 100) : 0;
+    
     setLastScore(finalScore);
     setScores((prev) => ({
       ...prev,
@@ -1751,6 +1794,18 @@ export function GamePage() {
     setLevel3Questions(null);
     setScreen('result');
     window.scrollTo({ top: 0, behavior: 'smooth' });
+
+    // Delay sebentar supaya sound soal terakhir (crowd/feedback) wis rampung
+    // sak durunge result sound dimainake. Browser bisa mblokir yen too many audio.
+    window.setTimeout(() => {
+      try {
+        if (pct === 100) playApplause();
+        else if (pct >= 70) playEncourage();
+        else playFailed();
+      } catch (error) {
+        console.warn('Result sound gagal diputar.', error);
+      }
+    }, 700);
   };
 
   const handleRetry = () => {
