@@ -1903,7 +1903,7 @@ function ZepGameOnlyScreen() {
               target="_blank"
               rel="noopener noreferrer"
               onClick={playClick}
-              aria-label={`Mulai ${mission.title} ing ZEP`}
+              aria-label={`Miwiti ${mission.title} ing ZEP`}
               className="group relative flex min-h-[470px] flex-col overflow-hidden rounded-[28px] border-4 border-white/80 bg-white p-5 text-[#3f2a1b] shadow-[0_16px_42px_rgba(78,45,21,0.16)] transition hover:-translate-y-2 hover:shadow-[0_22px_50px_rgba(78,45,21,0.24)] active:translate-y-0"
               style={{
                 boxShadow: `0 16px 42px ${level?.shadow ?? 'rgba(78,45,21,0.18)'}`,
@@ -1945,13 +1945,13 @@ function ZepGameOnlyScreen() {
                 </span>
               </span>
 
-              <span className="relative mt-2 flex justify-center overflow-hidden rounded-2xl transition group-hover:scale-[1.025] group-active:scale-[0.98]">
+              <span className="relative mt-4 flex justify-center overflow-visible px-3 py-2 transition group-hover:scale-[1.025] group-active:scale-[0.98]">
                 <img
-                  src="/assets/game/surabaya/button-mulai.png"
+                  src="/assets/game/surabaya/button-miwiti.png"
                   alt=""
-                  className="h-auto w-[220px] max-w-full drop-shadow-md"
+                  className="h-auto w-[240px] max-w-full drop-shadow-lg"
                 />
-                <span className="sr-only">Mulai misi ing ZEP</span>
+                <span className="sr-only">Miwiti misi ing ZEP</span>
               </span>
             </a>
           );

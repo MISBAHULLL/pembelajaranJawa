@@ -14,11 +14,11 @@ export const zepGameLevels = [
     type: 'ZEP Game',
     url: 'https://quiz.zep.us/id/play/gGjrpb',
     image: '/assets/game/surabaya/level-1.png',
-    location: 'Tugu Pahlawan',
+    location: 'Tugu Sura lan Baya',
     posLabel: 'Pos Wani',
     description: 'Sambung parikan kanthi trep kanggo nguripake semangat wani arek Suroboyo.',
     badge: 'Lencana Wani',
-    keywords: ['Tugu Pahlawan', 'semanggi'],
+    keywords: ['Tugu Sura lan Baya', 'semanggi'],
   },
   {
     levelId: 2,
