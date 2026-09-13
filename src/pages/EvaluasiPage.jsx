@@ -14,7 +14,8 @@ import {
   School,
   User,
   Hash,
-  ArrowRight
+  ArrowRight,
+  AlertTriangle
 } from 'lucide-react';
 import { evaluasiQuestions } from '../data/evaluasi.js';
 import { useClickSound } from '../hooks/useClickSound.js';
@@ -33,6 +34,7 @@ export function EvaluasiPage() {
   const [score, setScore] = useState(0);
   const [highScore, setHighScore] = useLocalStorage('javanesia-evaluasi-high-score', 0);
   const [showExplanation, setShowExplanation] = useState(false);
+  const [showExitConfirm, setShowExitConfirm] = useState(false);
 
   // Student profile info
   const name = getStudentName() || 'Siswa';
@@ -101,6 +103,26 @@ export function EvaluasiPage() {
   const handlePrint = () => {
     playClick();
     window.print();
+  };
+
+  const handleAskExit = () => {
+    playClick();
+    setShowExitConfirm(true);
+  };
+
+  const handleCancelExit = () => {
+    playClick();
+    setShowExitConfirm(false);
+  };
+
+  const handleConfirmExit = () => {
+    playClick();
+    setShowExitConfirm(false);
+    setStep('start');
+    setCurrentIdx(0);
+    setSelectedOpt(null);
+    setAnswers([]);
+    setShowExplanation(false);
   };
 
   const currentQ = evaluasiQuestions[currentIdx];
@@ -297,12 +319,7 @@ export function EvaluasiPage() {
           <div className="flex justify-between items-center gap-4">
             <button
               type="button"
-              onClick={() => {
-                playClick();
-                if (window.confirm('Yen kowe metu, kabeh wangsulanmu bakal ilang. Yakin pengin metu?')) {
-                  setStep('start');
-                }
-              }}
+              onClick={handleAskExit}
               className="flex items-center gap-2 rounded-2xl border-2 border-white bg-white/80 px-5 py-3 text-xs font-black uppercase tracking-wide text-[#7a5030] shadow-sm transition hover:bg-white hover:-translate-y-0.5"
             >
               <ArrowLeft size={14} />
@@ -323,6 +340,46 @@ export function EvaluasiPage() {
       )}
 
       {/* ──────────────── SCREEN: RESULT ──────────────── */}
+      {showExitConfirm && (
+        <div
+          className="fixed inset-0 z-50 grid place-items-center bg-transparent px-4"
+          role="dialog"
+          aria-modal="true"
+          aria-labelledby="evaluasi-exit-title"
+        >
+          <div className="w-full max-w-[420px] overflow-hidden rounded-[8px] border-2 border-[#0ea5a4] bg-[#fffaf3] ring-4 ring-white">
+            <div className="h-2 bg-gradient-to-r from-[#d97706] via-[#f59e0b] to-[#0ea5a4]" />
+            <div className="p-5 text-center sm:p-6">
+              <div className="mx-auto grid size-14 place-items-center rounded-full bg-orange-100 text-orange-600 ring-4 ring-orange-50">
+                <AlertTriangle size={28} aria-hidden="true" />
+              </div>
+              <h2 id="evaluasi-exit-title" className="mt-4 text-xl font-black text-[#2e1d10]">
+                Yakin Pengin Metu?
+              </h2>
+              <p className="mx-auto mt-2 max-w-[320px] text-sm font-bold leading-relaxed text-[#6b4a2d]">
+                Yen kowe metu, kabeh wangsulanmu bakal ilang lan evaluasi kudu diwiwiti maneh saka awal.
+              </p>
+
+              <div className="mt-6 grid gap-3 sm:grid-cols-2">
+                <button
+                  type="button"
+                  onClick={handleCancelExit}
+                  className="inline-flex items-center justify-center rounded-2xl border-2 border-orange-100 bg-white px-4 py-3 text-xs font-black uppercase tracking-wide text-[#7a5030] transition hover:-translate-y-0.5 hover:bg-orange-50"
+                >
+                  Tetep Nggarap
+                </button>
+                <button
+                  type="button"
+                  onClick={handleConfirmExit}
+                  className="inline-flex items-center justify-center rounded-2xl border-4 border-white bg-gradient-to-b from-[#ff9d50] to-[#d95716] px-4 py-3 text-xs font-black uppercase tracking-wide text-white transition hover:-translate-y-0.5 active:translate-y-0.5"
+                >
+                  Metu
+                </button>
+              </div>
+            </div>
+          </div>
+        </div>
+      )}
       {step === 'result' && (
         <div className="flex flex-col gap-6 animate-[fadeInUp_0.5s_ease-out]">
           <div className="relative overflow-hidden rounded-[8px] border border-white/80 bg-white/82 px-6 py-8 text-center shadow-[0_18px_40px_rgba(77,48,24,0.16)] backdrop-blur-md sm:py-10">
